@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
@@ -7,14 +8,14 @@
     <name>gsec</name>
     <organization>
         <name>UBC Michael Smith Laboratories</name>
-        <url>http://www.msl.ubc.ca/</url>
+        <url>https://www.msl.ubc.ca/</url>
     </organization>
     <scm>
-		<url>https://github.com/ppavlidis/gsec</url>
-		<connection>scm:git:git://github.com/ppavlidis/gsec.git</connection>
-		<developerConnection>scm:git:git@github.com:ppavlidis/gsec.git</developerConnection>
-    <tag>HEAD</tag>
-  </scm>
+        <url>https://github.com/ppavlidis/gsec</url>
+        <connection>scm:git:git://github.com/ppavlidis/gsec.git</connection>
+        <developerConnection>scm:git:git@github.com:ppavlidis/gsec.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
     <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
@@ -30,6 +31,12 @@
             <organization>University of British Columbia</organization>
         </developer>
     </developers>
+    <contributors>
+        <contributor>
+            <name>Guillaume Poirier-Morency</name>
+            <email>poirigui@msl.ubc.ca</email>
+        </contributor>
+    </contributors>
     <dependencies>
         <dependency>
             <groupId>baseCode</groupId>
@@ -235,7 +242,9 @@
                             </classpath>
                         </taskdef>
                         <mkdir dir="target/schema" />
-                        <schemaexport quiet="true" text="true" create="true" drop="false" delimiter=";" output="${project.build.directory}/schema/gsec-acl-ddl.sql" properties="${basedir}/src/main/resources/hibernate.properties">
+                        <schemaexport quiet="true" text="true" create="true" drop="false" delimiter=";"
+                                      output="${project.build.directory}/schema/gsec-acl-ddl.sql"
+                                      properties="${basedir}/src/main/resources/hibernate.properties">
                             <fileset dir="src/main/resources" includes="**/*.hbm.xml" />
                         </schemaexport>
                     </target>
