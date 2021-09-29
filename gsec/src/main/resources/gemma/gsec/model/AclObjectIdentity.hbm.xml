@@ -18,7 +18,7 @@
          <column name="OBJECT_ID" not-null="true" unique="false" sql-type="BIGINT"/>
       </property>
       <property name="type" type="java.lang.String">
-         <column name="OBJECT_CLASS" not-null="true" unique="false" sql-type="VARCHAR(255) character set latin1 collate latin1_swedish_ci" />
+         <column name="OBJECT_CLASS" not-null="true" unique="false" sql-type="VARCHAR(255)" />
       </property>
       <property name="entriesInheriting" type="java.lang.Boolean">
          <column name="ENTRIES_INHERITING" not-null="true" unique="false" sql-type="TINYINT"/>

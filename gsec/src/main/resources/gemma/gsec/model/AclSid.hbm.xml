@@ -14,20 +14,20 @@
          <generator class="native">
          </generator>
       </id>
-   
+
       <discriminator column="class" type="string"/>
-      
-      <subclass name="gemma.gsec.acl.domain.AclPrincipalSid" discriminator-value="PrincipalSid"   >   
+
+      <subclass name="gemma.gsec.acl.domain.AclPrincipalSid" discriminator-value="PrincipalSid"   >
          <property name="principal" type="java.lang.String">
-            <column name="PRINCIPAL" not-null="false" unique="true" sql-type="VARCHAR(255) character set latin1 collate latin1_swedish_ci" />
+            <column name="PRINCIPAL" not-null="false" unique="true" sql-type="VARCHAR(255)" />
          </property>
       </subclass>
-         
-      <subclass name="gemma.gsec.acl.domain.AclGrantedAuthoritySid" discriminator-value="GrantedAuthoritySid"  >   
+
+      <subclass name="gemma.gsec.acl.domain.AclGrantedAuthoritySid" discriminator-value="GrantedAuthoritySid"  >
          <property name="grantedAuthority" type="java.lang.String">
-            <column name="GRANTED_AUTHORITY" not-null="false" unique="true" sql-type="VARCHAR(255) character set latin1 collate latin1_swedish_ci" />
+            <column name="GRANTED_AUTHORITY" not-null="false" unique="true" sql-type="VARCHAR(255)" />
          </property>
       </subclass>
-        
+
    </class>
 </hibernate-mapping>
