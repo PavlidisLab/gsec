@@ -39,65 +39,6 @@
     </contributors>
     <dependencies>
         <dependency>
-            <groupId>baseCode</groupId>
-            <artifactId>baseCode</artifactId>
-            <version>1.0.31</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>jena-larq</artifactId>
-                    <groupId>org.apache.jena</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>jena-arq</artifactId>
-                    <groupId>org.apache.jena</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>lucene-queryparser</artifactId>
-                    <groupId>org.apache.lucene</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>lucene-core</artifactId>
-                    <groupId>org.apache.lucene</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>lucene-analyzers</artifactId>
-                    <groupId>org.apache.lucene</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>colt</artifactId>
-                    <groupId>colt</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>JRIEngine</artifactId>
-                    <groupId>RoSuDA</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>fluent-hc</artifactId>
-                    <groupId>org.apache.httpcomponents</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>netlib-java</artifactId>
-                    <groupId>com.googlecode.netlib-java</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>mtj</artifactId>
-                    <groupId>com.googlecode.matrix-toolkits-java</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>commons-math3</artifactId>
-                    <groupId>org.apache.commons</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>jfreechart</artifactId>
-                    <groupId>jfree</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>poi</artifactId>
-                    <groupId>org.apache.poi</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
             <groupId>commons-beanutils</groupId>
             <artifactId>commons-beanutils</artifactId>
             <version>1.9.4</version>
