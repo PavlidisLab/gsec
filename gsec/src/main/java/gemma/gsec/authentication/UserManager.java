@@ -39,24 +39,24 @@ public interface UserManager extends UserDetailsManager, GroupManager {
      * @param newPassword - encoded
      * @return the confirmation token they will need to use.
      */
-    public String changePasswordForUser( String email, String username, String newPassword );
+    String changePasswordForUser( String email, String username, String newPassword );
 
     /**
      * @return list of all available usernames.
      */
-    public Collection<String> findAllUsers();
+    Collection<String> findAllUsers();
 
     /**
      * @param emailAddress
      * @return
      */
-    public User findbyEmail( String emailAddress );
+    User findbyEmail( String emailAddress );
 
     /**
      * @param emailAddress
      * @return
      */
-    public User findByEmail( String emailAddress );
+    User findByEmail( String emailAddress );
 
     /**
      * Need a passthrough method to userService else we get a circular dependancy issue at runtime startup.
@@ -64,7 +64,7 @@ public interface UserManager extends UserDetailsManager, GroupManager {
      * @param userName
      * @return
      */
-    public User findByUserName( String userName ) throws UsernameNotFoundException;
+    User findByUserName( String userName ) throws UsernameNotFoundException;
 
     /**
      * Need a passthrough method to userService else we get a circular dependancy issue at runtime startup.
@@ -72,13 +72,13 @@ public interface UserManager extends UserDetailsManager, GroupManager {
      * @param name
      * @return
      */
-    public UserGroup findGroupByName( String name );
+    UserGroup findGroupByName( String name );
 
     /**
      * @param username
      * @return names of groups the user is in.
      */
-    public Collection<String> findGroupsForUser( String username ) throws UsernameNotFoundException;
+    Collection<String> findGroupsForUser( String username ) throws UsernameNotFoundException;
 
     /**
      * Generate a token that can be used to check if the user's email is valid.
@@ -86,39 +86,39 @@ public interface UserManager extends UserDetailsManager, GroupManager {
      * @param username
      * @return
      */
-    public String generateSignupToken( String username ) throws UsernameNotFoundException;
+    String generateSignupToken( String username ) throws UsernameNotFoundException;
 
     /**
      * @return the current user or null if the user is anonymous.
      */
-    public User getCurrentUser();
+    User getCurrentUser();
 
     /**
      * Returns a String username (the principal).
      *
      * @return
      */
-    public String getCurrentUsername();
+    String getCurrentUsername();
 
     /**
      * @return the prefix use on roles (groups, actually) e.g. "GROUP_"
      */
-    public String getRolePrefix();
+    String getRolePrefix();
 
     /**
      * @param name
      * @return
      */
-    public boolean groupExists( String name );
+    boolean groupExists( String name );
 
     /**
      * Need a passthrough method to userService else we get a circular dependency issue at runtime startup.
      *
      * @return
      */
-    public <T extends User> Collection<T> loadAll();
+    <T extends User> Collection<T> loadAll();
 
-    public boolean loggedIn();
+    boolean loggedIn();
 
     /**
      * Sign in the user identified
@@ -126,13 +126,13 @@ public interface UserManager extends UserDetailsManager, GroupManager {
      * @param userName
      * @param password
      */
-    public void reauthenticate( String userName, String password );
+    void reauthenticate( String userName, String password );
 
     /**
      * @param emailAddress
      * @return
      */
-    public boolean userWithEmailExists( String emailAddress );
+    boolean userWithEmailExists( String emailAddress );
 
     /**
      * Validate the token.
@@ -141,5 +141,5 @@ public interface UserManager extends UserDetailsManager, GroupManager {
      * @param key
      * @return true if okay, false otherwise
      */
-    public boolean validateSignupToken( String username, String key );
+    boolean validateSignupToken( String username, String key );
 }

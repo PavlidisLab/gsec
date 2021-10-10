@@ -44,11 +44,11 @@ public class UserDetailsImpl implements UserDetails {
     private Boolean enabled;
     private Collection<GrantedAuthority> grantedAuthorities = new HashSet<>();
 
-    private String password;
+    private final String password;
 
-    private String signupToken;
-    private Date signupTokenDatestamp;
-    private String userName;
+    private final String signupToken;
+    private final Date signupTokenDatestamp;
+    private final String userName;
 
     /**
      * @param password
@@ -60,8 +60,8 @@ public class UserDetailsImpl implements UserDetails {
      * @param signupConfirmationKeyDateStamp
      */
     public UserDetailsImpl( String password, String userName, Boolean enabled,
-            Collection<GrantedAuthority> grantedAuthorities, String email, String signupConfirmationKey,
-            Date signupConfirmationKeyDateStamp ) {
+        Collection<GrantedAuthority> grantedAuthorities, String email, String signupConfirmationKey,
+        Date signupConfirmationKeyDateStamp ) {
         super();
         this.password = password;
         this.userName = userName;

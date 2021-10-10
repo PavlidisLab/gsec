@@ -36,12 +36,12 @@ public class MapFilterer<T> implements Filterer<T> {
 
     protected static final Log logger = LogFactory.getLog( MapFilterer.class );
 
-    private Map<T, Object> map;
+    private final Map<T, Object> map;
 
     // collectionIter offers significant performance optimisations (as
     // per acegisecurity-developer mailing list conversation 19/5/05)
     private Iterator<T> collectionIter;
-    private Set<T> removeList;
+    private final Set<T> removeList;
 
     // ~ Constructors ===========================================================
 

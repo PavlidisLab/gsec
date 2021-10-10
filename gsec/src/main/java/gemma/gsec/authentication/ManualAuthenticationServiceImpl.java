@@ -47,8 +47,8 @@ import org.springframework.stereotype.Component;
  */
 @Component("manualAuthenticationService")
 public class ManualAuthenticationServiceImpl implements ApplicationContextAware, InitializingBean,
-        ManualAuthenticationService {
-    private static Log log = LogFactory.getLog( ManualAuthenticationServiceImpl.class.getName() );
+    ManualAuthenticationService {
+    private static final Log log = LogFactory.getLog( ManualAuthenticationServiceImpl.class.getName() );
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -65,7 +65,7 @@ public class ManualAuthenticationServiceImpl implements ApplicationContextAware,
     @Override
     public void afterPropertiesSet() {
         AnonymousAuthenticationProvider aap = new AnonymousAuthenticationProvider(
-                AuthenticationUtils.ANONYMOUS_AUTHENTICATION_KEY );
+            AuthenticationUtils.ANONYMOUS_AUTHENTICATION_KEY );
         aap.setMessageSource( messageSource );
 
         ( ( ProviderManager ) this.authenticationManager ).getProviders().add( aap );

@@ -43,7 +43,7 @@ public class AjaxAuthenticationSuccessHandler extends SavedRequestAwareAuthentic
 
     @Override
     public void onAuthenticationSuccess( HttpServletRequest request, HttpServletResponse response,
-            Authentication authentication ) throws ServletException, IOException {
+        Authentication authentication ) throws ServletException, IOException {
 
         String ajaxLoginTrue = request.getParameter( "ajaxLoginTrue" );
 
@@ -64,8 +64,8 @@ public class AjaxAuthenticationSuccessHandler extends SavedRequestAwareAuthentic
             super.onAuthenticationSuccess( request, response, authentication );
             authentication.getName();
 
-            jsonText = "{success:true,user:\'" + authentication.getName() + "\',isAdmin:" + SecurityUtil.isUserAdmin()
-                    + "}";
+            jsonText = "{success:true,user:'" + authentication.getName() + "',isAdmin:" + SecurityUtil.isUserAdmin()
+                + "}";
             jsonUtil.writeToResponse( jsonText );
         } else {
 

@@ -41,7 +41,7 @@ public class AjaxAuthenticationFailureHandler extends SimpleUrlAuthenticationFai
 
     @Override
     public void onAuthenticationFailure( HttpServletRequest request, HttpServletResponse response,
-            AuthenticationException exception ) throws ServletException, IOException {
+        AuthenticationException exception ) throws ServletException, IOException {
 
         String ajaxLoginTrue = request.getParameter( "ajaxLoginTrue" );
 
@@ -64,9 +64,7 @@ public class AjaxAuthenticationFailureHandler extends SimpleUrlAuthenticationFai
             jsonText = "{success:false}";
             jsonUtil.writeToResponse( jsonText );
 
-        }
-
-        else {
+        } else {
 
             this.setRedirectStrategy( new DefaultRedirectStrategy() );
 

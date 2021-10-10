@@ -25,23 +25,23 @@ public interface Describable extends java.io.Serializable {
     /**
      * A human-readable description of the object
      */
-    public String getDescription();
+    String getDescription();
 
     /**
      *
      */
-    public Long getId();
+    Long getId();
 
     /**
      * The name of an object is a possibly ambiguous human-readable identifier that need not be an external database
      * reference.
      */
-    public String getName();
+    String getName();
 
-    public void setDescription( String description );
+    void setDescription( String description );
 
-    public void setId( Long id );
+    void setId( Long id );
 
-    public void setName( String name );
+    void setName( String name );
 
 }

@@ -70,17 +70,16 @@ import gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl;
  */
 public class AclCollectionEntryVoter extends AbstractAclVoter {
 
-    private static Log logger = LogFactory.getLog( AclCollectionEntryVoter.class );
+    private static final Log logger = LogFactory.getLog( AclCollectionEntryVoter.class );
 
-    private AclService aclService;
-    private String internalMethod;
+    private final AclService aclService;
+    private final String internalMethod = null;
     private ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy = new ValueObjectAwareIdentityRetrievalStrategyImpl();
-    private String processConfigAttribute;
-    private List<Permission> requirePermission;
+    private final String processConfigAttribute;
+    private final List<Permission> requirePermission;
     private SidRetrievalStrategy sidRetrievalStrategy = new AclSidRetrievalStrategyImpl();
 
     public AclCollectionEntryVoter( AclService aclService, String processConfigAttribute, Permission[] requirePermission ) {
-
         this.aclService = aclService;
         this.processConfigAttribute = processConfigAttribute;
         this.requirePermission = Arrays.asList( requirePermission );
@@ -144,10 +143,7 @@ public class AclCollectionEntryVoter extends AbstractAclVoter {
 
     @Override
     public boolean supports( ConfigAttribute attribute ) {
-        if ( ( attribute.getAttribute() != null ) && attribute.getAttribute().equals( processConfigAttribute ) ) {
-            return true;
-        }
-        return false;
+        return ( attribute.getAttribute() != null ) && attribute.getAttribute().equals( processConfigAttribute );
 
     }
 
@@ -186,21 +182,21 @@ public class AclCollectionEntryVoter extends AbstractAclVoter {
                 if ( StringUtils.hasText( getInternalMethod() ) ) {
                     try {
                         Class<?> clazz = domainObject.getClass();
-                        Method method = clazz.getMethod( getInternalMethod(), new Class[0] );
-                        domainObject = method.invoke( domainObject, new Object[0] );
+                        Method method = clazz.getMethod( getInternalMethod() );
+                        domainObject = method.invoke( domainObject );
                     } catch ( NoSuchMethodException nsme ) {
                         throw new AuthorizationServiceException( "Object of class '" + domainObject.getClass()
-                                + "' does not provide the requested internalMethod: " + getInternalMethod() );
+                            + "' does not provide the requested internalMethod: " + getInternalMethod() );
                     } catch ( IllegalAccessException iae ) {
                         logger.debug( "IllegalAccessException", iae );
 
                         throw new AuthorizationServiceException( "Problem invoking internalMethod: "
-                                + getInternalMethod() + " for object: " + domainObject );
+                            + getInternalMethod() + " for object: " + domainObject );
                     } catch ( InvocationTargetException ite ) {
                         logger.debug( "InvocationTargetException", ite );
 
                         throw new AuthorizationServiceException( "Problem invoking internalMethod: "
-                                + getInternalMethod() + " for object: " + domainObject );
+                            + getInternalMethod() + " for object: " + domainObject );
                     }
                 }
 
@@ -297,7 +293,7 @@ public class AclCollectionEntryVoter extends AbstractAclVoter {
         }
 
         throw new AuthorizationServiceException( "Secure object: " + secureObject
-                + " did not provide a non-empty Collection of " + this.getProcessDomainObjectClass() + "'s" );
+            + " did not provide a non-empty Collection of " + this.getProcessDomainObjectClass() + "'s" );
 
     }
 

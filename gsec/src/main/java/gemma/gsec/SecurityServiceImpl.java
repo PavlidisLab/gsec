@@ -82,9 +82,9 @@ public class SecurityServiceImpl implements SecurityService {
     @Autowired
     private AclService aclService;
 
-    private Log log = LogFactory.getLog( SecurityServiceImpl.class );
+    private final Log log = LogFactory.getLog( SecurityServiceImpl.class );
 
-    private ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy = new ValueObjectAwareIdentityRetrievalStrategyImpl();
+    private final ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy = new ValueObjectAwareIdentityRetrievalStrategyImpl();
 
     @Autowired
     private SessionRegistry sessionRegistry;
@@ -162,7 +162,7 @@ public class SecurityServiceImpl implements SecurityService {
          * used/slow.
          */
         Map<ObjectIdentity, Acl> acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         String currentUsername = userManager.getCurrentUsername();
 
@@ -174,8 +174,8 @@ public class SecurityServiceImpl implements SecurityService {
 
             result.put( objectIdentities.get( oi ), false );
             if ( isAdmin
-                    || ( owner != null && owner instanceof AclPrincipalSid && ( ( AclPrincipalSid ) owner )
-                            .getPrincipal().equals( currentUsername ) ) ) {
+                || ( owner != null && owner instanceof AclPrincipalSid && ( ( AclPrincipalSid ) owner )
+                .getPrincipal().equals( currentUsername ) ) ) {
                 result.put( objectIdentities.get( oi ), true );
             }
         }
@@ -200,7 +200,7 @@ public class SecurityServiceImpl implements SecurityService {
          * used/slow.
          */
         Map<ObjectIdentity, Acl> acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
@@ -223,7 +223,7 @@ public class SecurityServiceImpl implements SecurityService {
         if ( objectIdentities.isEmpty() ) return result;
 
         Map<ObjectIdentity, Acl> acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
@@ -290,7 +290,7 @@ public class SecurityServiceImpl implements SecurityService {
          * We do make the groupAuthority unique.
          */
         String groupAuthority = groupName.toUpperCase() + "_"
-                + RandomStringUtils.randomAlphanumeric( 32 ).toUpperCase();
+            + RandomStringUtils.randomAlphanumeric( 32 ).toUpperCase();
 
         List<GrantedAuthority> auths = new ArrayList<>();
         auths.add( new SimpleGrantedAuthority( groupAuthority ) );
@@ -366,7 +366,7 @@ public class SecurityServiceImpl implements SecurityService {
          * Take advantage of fast bulk loading of ACLs.
          */
         Map<ObjectIdentity, Acl> acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         Map<T, Acl> result = new HashMap<>();
         for ( ObjectIdentity o : acls.keySet() ) {
@@ -615,15 +615,12 @@ public class SecurityServiceImpl implements SecurityService {
          * used/slow.
          */
         Map<ObjectIdentity, Acl> acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
             Sid owner = a.getOwner();
-            if ( owner == null )
-                result.put( objectIdentities.get( oi ), null );
-            else
-                result.put( objectIdentities.get( oi ), owner );
+            result.put( objectIdentities.get( oi ), owner );
         }
         return result;
     }
@@ -636,7 +633,7 @@ public class SecurityServiceImpl implements SecurityService {
      */
     @Override
     public <T extends Securable> List<Boolean> hasPermission( List<T> svos, List<Permission> requiredPermissions,
-            Authentication authentication ) {
+        Authentication authentication ) {
 
         List<Boolean> result = new ArrayList<>();
 
@@ -650,7 +647,7 @@ public class SecurityServiceImpl implements SecurityService {
         Map<ObjectIdentity, Acl> acls;
         try {
             acls = aclService
-                    .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         } catch ( NotFoundException e ) {
             /*
@@ -712,7 +709,7 @@ public class SecurityServiceImpl implements SecurityService {
      */
     @Override
     public Map<SecureValueObject, Boolean> hasPermissionVO( Collection<SecureValueObject> svos,
-            List<Permission> requiredPermissions, Authentication authentication ) {
+        List<Permission> requiredPermissions, Authentication authentication ) {
 
         Map<SecureValueObject, Boolean> result = new HashMap<>();
 
@@ -725,7 +722,7 @@ public class SecurityServiceImpl implements SecurityService {
          */
 
         Map<ObjectIdentity, Acl> acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         assert !acls.isEmpty();
 
@@ -760,7 +757,7 @@ public class SecurityServiceImpl implements SecurityService {
      */
     @Override
     public boolean hasPermissionVO( SecureValueObject svo, List<Permission> requiredPermissions,
-            Authentication authentication ) {
+        Authentication authentication ) {
 
         List<Sid> sids = sidRetrievalStrategy.getSids( authentication );
 
@@ -863,9 +860,9 @@ public class SecurityServiceImpl implements SecurityService {
              * owner.
              */
             if ( owner instanceof AclGrantedAuthoritySid
-                    && SecurityUtil.isUserAdmin()
-                    && ( ( AclGrantedAuthoritySid ) owner ).getGrantedAuthority().equals(
-                            AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) {
+                && SecurityUtil.isUserAdmin()
+                && ( ( AclGrantedAuthoritySid ) owner ).getGrantedAuthority().equals(
+                AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) {
                 return true;
             }
 
@@ -884,7 +881,7 @@ public class SecurityServiceImpl implements SecurityService {
                 if ( SecurityUtil.isUserAdmin() ) {
                     try {
                         Collection<? extends GrantedAuthority> authorities = userManager.loadUserByUsername( ownerName )
-                                .getAuthorities();
+                            .getAuthorities();
                         for ( GrantedAuthority grantedAuthority : authorities ) {
                             if ( grantedAuthority.getAuthority().equals( AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) {
                                 return true;
@@ -930,7 +927,7 @@ public class SecurityServiceImpl implements SecurityService {
         perms.add( BasePermission.READ );
 
         Sid anonSid = new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) );
+            AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) );
 
         List<Sid> sids = new Vector<>();
         sids.add( anonSid );
@@ -1048,7 +1045,7 @@ public class SecurityServiceImpl implements SecurityService {
 
         Sid owner = acl.getOwner();
         if ( owner != null && owner instanceof AclPrincipalSid
-                && ( ( AclPrincipalSid ) owner ).getPrincipal().equals( userName ) ) {
+            && ( ( AclPrincipalSid ) owner ).getPrincipal().equals( userName ) ) {
             /*
              * Already owned by the given user -- note we don't check if the user exists here.
              */
@@ -1159,7 +1156,7 @@ public class SecurityServiceImpl implements SecurityService {
         }
 
         acl.insertAce( acl.getEntries().size(), BasePermission.READ, new AclGrantedAuthoritySid(
-                new SimpleGrantedAuthority( AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY ) ), true );
+            new SimpleGrantedAuthority( AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY ) ), true );
 
         aclService.updateAcl( acl );
 
@@ -1351,7 +1348,7 @@ public class SecurityServiceImpl implements SecurityService {
         GrantedAuthority ga = groupAuthorities.get( 0 );
 
         acl.insertAce( acl.getEntries().size(), permission, new AclGrantedAuthoritySid( userManager.getRolePrefix()
-                + ga ), true );
+            + ga ), true );
         aclService.updateAcl( acl );
     }
 
@@ -1409,7 +1406,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     private <T extends Securable> Map<T, Boolean> groupHasPermission( Collection<T> securables,
-            List<Permission> requiredPermissions, String groupName ) {
+        List<Permission> requiredPermissions, String groupName ) {
         Map<T, Boolean> result = new HashMap<>();
         Map<ObjectIdentity, T> objectIdentities = getObjectIdentities( securables );
 
@@ -1418,12 +1415,12 @@ public class SecurityServiceImpl implements SecurityService {
         List<Sid> sids = new ArrayList<>();
         for ( GrantedAuthority a : auths ) {
             AclGrantedAuthoritySid sid = new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                    userManager.getRolePrefix() + a.getAuthority() ) );
+                userManager.getRolePrefix() + a.getAuthority() ) );
             sids.add( sid );
         }
 
         Map<ObjectIdentity, Acl> acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
@@ -1449,7 +1446,7 @@ public class SecurityServiceImpl implements SecurityService {
         List<Sid> sids = new ArrayList<>();
         for ( GrantedAuthority a : auths ) {
             AclGrantedAuthoritySid sid = new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                    userManager.getRolePrefix() + a.getAuthority() ) );
+                userManager.getRolePrefix() + a.getAuthority() ) );
             sids.add( sid );
         }
 
@@ -1475,7 +1472,7 @@ public class SecurityServiceImpl implements SecurityService {
         // Obtain the SIDs applicable to the principal
         UserDetails user = userManager.loadUserByUsername( userName );
         Authentication authentication = new UsernamePasswordAuthenticationToken( userName, user.getPassword(),
-                user.getAuthorities() );
+            user.getAuthorities() );
         List<Sid> sids = sidRetrievalStrategy.getSids( authentication );
 
         Acl acl = null;
@@ -1490,7 +1487,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     private <T extends Securable> void populateGroupsEditableBy( Map<T, Collection<String>> result, String groupName,
-            Map<T, Boolean> groupHasPermission ) {
+        Map<T, Boolean> groupHasPermission ) {
         for ( T s : groupHasPermission.keySet() ) {
             if ( groupHasPermission.get( s ) ) {
                 if ( !result.containsKey( s ) ) {
@@ -1547,7 +1544,7 @@ public class SecurityServiceImpl implements SecurityService {
 
             Sid sid = entry.getSid();
             if ( sid instanceof AclGrantedAuthoritySid
-                    && ( ( AclGrantedAuthoritySid ) sid ).getGrantedAuthority().equals( authority ) ) {
+                && ( ( AclGrantedAuthoritySid ) sid ).getGrantedAuthority().equals( authority ) ) {
                 log.info( "Removing: " + permission + " from " + object + " granted to " + sid );
                 toremove.add( i );
             } else {

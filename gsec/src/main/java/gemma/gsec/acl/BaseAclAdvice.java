@@ -73,7 +73,7 @@ import gemma.gsec.util.SecurityUtil;
  */
 public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAware {
 
-    private static Log log = LogFactory.getLog( BaseAclAdvice.class );
+    private static final Log log = LogFactory.getLog( BaseAclAdvice.class );
 
     // @Autowired
     private AclService aclService;
@@ -158,9 +158,9 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
     // from gemma reflectionutil
     Object getProperty( Object object, PropertyDescriptor descriptor ) throws IllegalAccessException,
-            InvocationTargetException {
+        InvocationTargetException {
         Method getter = descriptor.getReadMethod();
-        Object associatedObject = getter.invoke( object, new Object[] {} );
+        Object associatedObject = getter.invoke( object );
         return associatedObject;
     }
 
@@ -285,14 +285,14 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
          */
         if ( log.isDebugEnabled() ) log.debug( "Making administratable by GROUP_ADMIN: " + oi );
         grant( acl, BasePermission.ADMINISTRATION, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) );
+            AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) );
 
         /*
          * Let agent read anything
          */
         if ( log.isDebugEnabled() ) log.debug( "Making readable by GROUP_AGENT: " + oi );
         grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                AuthorityConstants.AGENT_GROUP_AUTHORITY ) ) );
+            AuthorityConstants.AGENT_GROUP_AUTHORITY ) ) );
 
         /*
          * If admin, and the object is not a user or group, make it readable by anonymous.
@@ -302,7 +302,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
         if ( makeAnonymousReadable ) {
             if ( log.isDebugEnabled() ) log.debug( "Making readable by IS_AUTHENTICATED_ANONYMOUSLY: " + oi );
             grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                    AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY ) ) );
+                AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY ) ) );
         }
 
         /*
@@ -361,11 +361,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      */
     protected boolean specialCaseToKeepPrivateOnCreation( Class<? extends Securable> clazz ) {
 
-        if ( SecuredChild.class.isAssignableFrom( clazz ) ) {
-            return true;
-        }
-
-        return false;
+        return SecuredChild.class.isAssignableFrom( clazz );
 
     }
 
@@ -469,8 +465,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
         } else {
             assert !acl.getEntries().isEmpty()
-                    || ( parentAcl != null && !parentAcl.getEntries().isEmpty() ) : "Failed to get valid ace for acl or parents: "
-                            + acl + " parent=" + parentAcl;
+                || ( parentAcl != null && !parentAcl.getEntries().isEmpty() ) : "Failed to get valid ace for acl or parents: "
+                + acl + " parent=" + parentAcl;
         }
 
         /*
@@ -527,7 +523,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
             if ( parentAcl != null && inheritFromParent ) {
                 if ( log.isTraceEnabled() )
                     log.trace( "Setting parent to: " + parentAcl.getObjectIdentity() + " <--- "
-                            + acl.getObjectIdentity() );
+                        + acl.getObjectIdentity() );
                 acl.setParent( parentAcl );
             }
             acl.setEntriesInheriting( inheritFromParent );
@@ -552,8 +548,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
     private final Acl chooseParentForAssociations( Object object, Acl previousParent ) {
         Acl parentAcl;
         if ( SecuredNotChild.class.isAssignableFrom( object.getClass() )
-                || ( previousParent == null && Securable.class.isAssignableFrom( object.getClass() ) && !SecuredChild.class
-                        .isAssignableFrom( object.getClass() ) ) ) {
+            || ( previousParent == null && Securable.class.isAssignableFrom( object.getClass() ) && !SecuredChild.class
+            .isAssignableFrom( object.getClass() ) ) ) {
 
             parentAcl = getAcl( ( Securable ) object );
         } else {
@@ -641,11 +637,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
         if ( c == null ) return false;
 
-        if ( Securable.class.isAssignableFrom( c.getClass() ) ) {
-            return true;
-        }
-
-        return false;
+        return Securable.class.isAssignableFrom( c.getClass() );
     }
 
     /**
@@ -706,7 +698,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
                 boolean found = false;
                 for ( AccessControlEntry childAce : childAcl.getEntries() ) {
                     if ( childAce.getPermission().equals( ace.getPermission() )
-                            && childAce.getSid().equals( ace.getSid() ) ) {
+                        && childAce.getSid().equals( ace.getSid() ) ) {
                         found = true;
                         log.trace( "Removing ace from child: " + ace );
                         break;
@@ -715,7 +707,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
                 if ( !found ) {
                     log.warn( "Didn't find matching permission for " + ace + " from parent "
-                            + parentAcl.getObjectIdentity() );
+                        + parentAcl.getObjectIdentity() );
                     log.warn( "Parent acl: " + parentAcl );
                     oktoClearACEs = false;
                     break;
@@ -770,8 +762,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
             if ( currentParentAcl != null && !currentParentAcl.equals( parentAcl ) ) {
                 throw new IllegalStateException( "Cannot change parentAcl on " + object
-                        + " once it has ben set:\n Current parent: " + currentParentAcl + " != \nProposed parent:"
-                        + parentAcl );
+                    + " once it has ben set:\n Current parent: " + currentParentAcl + " != \nProposed parent:"
+                    + parentAcl );
             }
 
             boolean changedParentAcl = false;
@@ -857,7 +849,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
              * _every_ association, which will often not be reachable.
              */
             if ( !specialCaseForAssociationFollow( object, propertyName )
-                    && ( canSkipAssociationCheck( object, propertyName ) || !crudUtils.needCascade( methodName, cs ) ) ) {
+                && ( canSkipAssociationCheck( object, propertyName ) || !crudUtils.needCascade( methodName, cs ) ) ) {
                 // if ( log.isTraceEnabled() )
                 // log.trace( "Skipping checking association: " + propertyName + " on " + object );
                 continue;
@@ -880,7 +872,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
                  */
                 if ( log.isTraceEnabled() )
                     log.trace( "Association was unreachable during ACL association checking: " + propertyName + " on "
-                            + object );
+                        + object );
                 return;
             } catch ( Exception e ) {
                 throw new RuntimeException( "Failure during association check of: " + propertyName + " on " + object, e );
@@ -912,7 +904,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
                      */
                     if ( log.isTraceEnabled() )
                         log.trace( "Association was unreachable during ACL association checking: " + propertyName
-                                + " on " + object );
+                            + " on " + object );
                 }
 
             } else {
@@ -939,12 +931,12 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
         if ( oi == null ) {
             throw new IllegalStateException(
-                    "On 'create' methods, object should have a valid objectIdentity available. Method=" + methodName
-                            + " on " + s );
+                "On 'create' methods, object should have a valid objectIdentity available. Method=" + methodName
+                    + " on " + s );
         }
 
         Acl parentAcl = SecuredChild.class.isAssignableFrom( s.getClass() ) ? locateParentAcl( ( SecuredChild ) s )
-                : null;
+            : null;
 
         addOrUpdateAcl( null, s, parentAcl );
         processAssociations( methodName, s, null );
@@ -979,7 +971,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
              * Then, this shouldn't be an update.
              */
             log.warn( "On 'update' methods, there should be a ACL on the passed object already. Method=" + m + " on "
-                    + s );
+                + s );
         }
 
         addOrUpdateAcl( acl, s, parentAcl );

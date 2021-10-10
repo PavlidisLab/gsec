@@ -68,7 +68,7 @@ public class JSONUtil {
         HttpServletResponseWrapper responseWrapper = new HttpServletResponseWrapper( response );
         responseWrapper.setContentType( "text/plain" );
         responseWrapper.setContentLength( jsonText.getBytes().length );
-        try (Writer out = responseWrapper.getWriter();) {
+        try ( Writer out = responseWrapper.getWriter() ) {
             out.write( jsonText );
         }
     }

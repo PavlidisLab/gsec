@@ -31,15 +31,15 @@ public interface ManualAuthenticationService {
      * @return
      * @throws AuthenticationException
      */
-    public abstract Authentication attemptAuthentication( String username, String password )
-            throws AuthenticationException;
+    Authentication attemptAuthentication( String username, String password )
+        throws AuthenticationException;
 
     /**
      * Provide "anonymous" authentication.
      */
-    public abstract void authenticateAnonymously();
+    void authenticateAnonymously();
 
-    public abstract void setApplicationContext( ApplicationContext applicationContext ) throws BeansException;
+    void setApplicationContext( ApplicationContext applicationContext ) throws BeansException;
 
     /**
      * Entry point for non-http request.
@@ -47,6 +47,6 @@ public interface ManualAuthenticationService {
      * @param username
      * @param password
      */
-    public abstract boolean validateRequest( String username, String password );
+    boolean validateRequest( String username, String password );
 
 }

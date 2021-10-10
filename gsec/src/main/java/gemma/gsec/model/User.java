@@ -30,42 +30,42 @@ public interface User extends Describable, Person, SecuredNotChild {
     /**
      *
      */
-    public Boolean getEnabled();
+    Boolean getEnabled();
 
     /**
      *
      */
-    public String getPassword();
+    String getPassword();
 
     /**
      *
      */
-    public String getPasswordHint();
+    String getPasswordHint();
 
     /**
      *
      */
-    public String getSignupToken();
+    String getSignupToken();
 
     /**
      *
      */
-    public java.util.Date getSignupTokenDatestamp();
+    java.util.Date getSignupTokenDatestamp();
 
     /**
      *
      */
-    public String getUserName();
+    String getUserName();
 
-    public void setEnabled( Boolean enabled );
+    void setEnabled( Boolean enabled );
 
-    public void setPassword( String password );
+    void setPassword( String password );
 
-    public void setPasswordHint( String passwordHint );
+    void setPasswordHint( String passwordHint );
 
-    public void setSignupToken( String signupToken );
+    void setSignupToken( String signupToken );
 
-    public void setSignupTokenDatestamp( java.util.Date signupTokenDatestamp );
+    void setSignupTokenDatestamp( java.util.Date signupTokenDatestamp );
 
-    public void setUserName( String userName );
+    void setUserName( String userName );
 }

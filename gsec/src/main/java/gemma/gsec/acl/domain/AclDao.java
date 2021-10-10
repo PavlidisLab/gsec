@@ -29,22 +29,22 @@ import org.springframework.security.acls.model.Sid;
  */
 public interface AclDao extends LookupStrategy {
 
-    public AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, Boolean true1 );
+    AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, Boolean true1 );
 
-    public void delete( ObjectIdentity objectIdentity, boolean deleteChildren );
+    void delete( ObjectIdentity objectIdentity, boolean deleteChildren );
 
-    public void delete( Sid sid );
+    void delete( Sid sid );
 
-    public AclObjectIdentity find( ObjectIdentity oid );
+    AclObjectIdentity find( ObjectIdentity oid );
 
-    public AclSid find( Sid sid );
+    AclSid find( Sid sid );
 
-    public List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity );
+    List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity );
 
-    public AclSid findOrCreate( Sid sid );
+    AclSid findOrCreate( Sid sid );
 
-    public void setSessionFactory( SessionFactory sessionFactory );
+    void setSessionFactory( SessionFactory sessionFactory );
 
-    public void update( MutableAcl acl );
+    void update( MutableAcl acl );
 
 }

@@ -38,9 +38,9 @@ import gemma.gsec.acl.domain.AclPrincipalSid;
  */
 public class AclAuthorizationStrategyImpl implements AclAuthorizationStrategy {
 
-    private GrantedAuthority gaGeneralChanges;
-    private GrantedAuthority gaModifyAuditing;
-    private GrantedAuthority gaTakeOwnership;
+    private final GrantedAuthority gaGeneralChanges;
+    private final GrantedAuthority gaModifyAuditing;
+    private final GrantedAuthority gaTakeOwnership;
     private SidRetrievalStrategy sidRetrievalStrategy = new AclSidRetrievalStrategyImpl();
 
     /**
@@ -65,8 +65,8 @@ public class AclAuthorizationStrategyImpl implements AclAuthorizationStrategy {
     @Override
     public void securityCheck( Acl acl, int changeType ) {
         if ( ( SecurityContextHolder.getContext() == null )
-                || ( SecurityContextHolder.getContext().getAuthentication() == null )
-                || !SecurityContextHolder.getContext().getAuthentication().isAuthenticated() ) {
+            || ( SecurityContextHolder.getContext().getAuthentication() == null )
+            || !SecurityContextHolder.getContext().getAuthentication().isAuthenticated() ) {
             throw new AccessDeniedException( "Authenticated principal required to operate with ACLs" );
         }
 
@@ -74,10 +74,10 @@ public class AclAuthorizationStrategyImpl implements AclAuthorizationStrategy {
 
         // Check if authorized by virtue of ACL ownership
         Sid currentUser = new AclPrincipalSid( authentication ); // this is the only line that differs from spring
-                                                                 // implementation.
+        // implementation.
 
         if ( currentUser.equals( acl.getOwner() )
-                && ( ( changeType == CHANGE_GENERAL ) || ( changeType == CHANGE_OWNERSHIP ) ) ) {
+            && ( ( changeType == CHANGE_GENERAL ) || ( changeType == CHANGE_OWNERSHIP ) ) ) {
             return;
         }
 
@@ -107,7 +107,7 @@ public class AclAuthorizationStrategyImpl implements AclAuthorizationStrategy {
         }
 
         throw new AccessDeniedException(
-                "Principal does not have required ACL permissions to perform requested operation" );
+            "Principal does not have required ACL permissions to perform requested operation" );
     }
 
     public void setSidRetrievalStrategy( SidRetrievalStrategy sidRetrievalStrategy ) {

@@ -51,12 +51,12 @@ import org.springframework.util.Assert;
 @Component(value = "aclService")
 public class AclServiceImpl implements AclService {
 
-    private static Log log = LogFactory.getLog( AclServiceImpl.class.getName() );
+    private static final Log log = LogFactory.getLog( AclServiceImpl.class.getName() );
 
     @Autowired
     private AclDao aclDao;
 
-    private TransactionTemplate transactionTemplate;
+    private final TransactionTemplate transactionTemplate;
 
     @Autowired
     public AclServiceImpl( PlatformTransactionManager transactionManager ) {
@@ -188,7 +188,7 @@ public class AclServiceImpl implements AclService {
      */
     @Override
     public Map<ObjectIdentity, Acl> readAclsById( final List<ObjectIdentity> objects, final List<Sid> sids )
-            throws NotFoundException {
+        throws NotFoundException {
 
         if ( TransactionSynchronizationManager.isActualTransactionActive() ) {
             return doReadAcls( objects, sids );

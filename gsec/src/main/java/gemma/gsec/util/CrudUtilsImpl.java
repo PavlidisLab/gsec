@@ -52,7 +52,7 @@ public class CrudUtilsImpl implements InitializingBean, CrudUtils, BeanFactoryAw
 
     static Log log = LogFactory.getLog( CrudUtilsImpl.class.getName() );
 
-    private static Set<String> crudMethods;
+    private static final Set<String> crudMethods;
 
     static {
         crudMethods = new HashSet<>();
@@ -310,7 +310,7 @@ public class CrudUtilsImpl implements InitializingBean, CrudUtils, BeanFactoryAw
      */
     private boolean needCascade( CascadeStyle cs ) {
         return cs.doCascade( CascadingAction.PERSIST ) || cs.doCascade( CascadingAction.SAVE_UPDATE )
-                || cs.doCascade( CascadingAction.SAVE_UPDATE_COPY );
+            || cs.doCascade( CascadingAction.SAVE_UPDATE_COPY );
     }
 
 }

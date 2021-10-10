@@ -38,7 +38,7 @@ import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
  */
 public class SecurityUtil {
 
-    private static AuthenticationTrustResolver authenticationTrustResolver = new AuthenticationTrustResolverImpl();
+    private static final AuthenticationTrustResolver authenticationTrustResolver = new AuthenticationTrustResolverImpl();
 
     /**
      * Returns the username of the authenticated user
@@ -119,7 +119,7 @@ public class SecurityUtil {
                 if ( grantedAuthority.startsWith( "GROUP_" ) && ace.isGranting() ) {
 
                     if ( grantedAuthority.equals( AuthorityConstants.AGENT_GROUP_AUTHORITY )
-                            || grantedAuthority.equals( AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) {
+                        || grantedAuthority.equals( AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) {
                         continue;
                     }
                     return true;
@@ -168,7 +168,7 @@ public class SecurityUtil {
      */
     public static boolean isUserAnonymous() {
         return authenticationTrustResolver.isAnonymous( getAuthentication() )
-                || getAuthentication().getPrincipal().equals( "anonymousUser" );
+            || getAuthentication().getPrincipal().equals( "anonymousUser" );
     }
 
     /**

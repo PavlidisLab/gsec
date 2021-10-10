@@ -39,7 +39,7 @@ public interface CrudHelper<E> {
      * @return
      * @throws DataAccessException If the entity passed is already persistent
      */
-    public E cascadeCreateOrUpdate( E entity ) throws DataAccessException;
+    E cascadeCreateOrUpdate( E entity ) throws DataAccessException;
 
     /**
      * Update the state of a persistent entity, including all of its associated objects. If any of the associated
@@ -49,7 +49,7 @@ public interface CrudHelper<E> {
      * @param entity
      * @throws DataAccessException If the entity that is passed in is not persistent
      */
-    public void cascadeUpdate( E entity ) throws DataAccessException;
+    void cascadeUpdate( E entity ) throws DataAccessException;
 
     /**
      * Make a new entity persistent, checking the business key first. If an entity is passed that matches a object in
@@ -68,7 +68,7 @@ public interface CrudHelper<E> {
      * @return
      * @throws DataAccessException
      */
-    public E createOrUpdate( E entity ) throws DataAccessException;
+    E createOrUpdate( E entity ) throws DataAccessException;
 
     /**
      * Delete an entity from the persistent store. Associated objects are not explicitly altered unless they maintain a
@@ -78,7 +78,7 @@ public interface CrudHelper<E> {
      * @param entity
      * @throws IllegalArgumentException if the entity is not persistent.
      */
-    public void delete( E entity ) throws IllegalArgumentException;
+    void delete( E entity ) throws IllegalArgumentException;
 
     /**
      * Locate an object in the system, based on the business key from the template entity passed in.
@@ -87,7 +87,7 @@ public interface CrudHelper<E> {
      * @return
      * @throws DataAccessException if the entity passed in is already persistent.
      */
-    public E find( E entity ) throws DataAccessException;
+    E find( E entity ) throws DataAccessException;
 
     /**
      * Make a new entity persistent, checking the business key first. If an entity is passed that matches a object in
@@ -100,7 +100,7 @@ public interface CrudHelper<E> {
      * @return
      * @throws DataAccessException
      */
-    public E findOrCreate( E entity ) throws DataAccessException;
+    E findOrCreate( E entity ) throws DataAccessException;
 
     /**
      * Make a new entity persistent, including all of its associated objects, but business keys are <em>not</em>
@@ -115,7 +115,7 @@ public interface CrudHelper<E> {
      * @throws IllegalArgumentException If the entity passed is already persistent, or any of the associated objects are
      *         persistent
      */
-    public E strictCreate( E entity ) throws IllegalArgumentException;
+    E strictCreate( E entity ) throws IllegalArgumentException;
 
     /**
      * Update the state of a persistent entity, including all of its associated objects, all of which must already be
@@ -128,6 +128,6 @@ public interface CrudHelper<E> {
      * @param entity
      * @throws DataAccessException If any of the associated objects are not persistent
      */
-    public void strictUpdate( E entity ) throws DataAccessException;
+    void strictUpdate( E entity ) throws DataAccessException;
 
 }

@@ -28,13 +28,13 @@ public interface CrudUtils {
      * @param role
      * @return
      */
-    public abstract CollectionPersister getCollectionPersister( String role );
+    CollectionPersister getCollectionPersister( String role );
 
     /**
      * @param object
      * @return
      */
-    public abstract EntityPersister getEntityPersister( Object object );
+    EntityPersister getEntityPersister( Object object );
 
     /**
      * Determine if cascading an association is required.
@@ -43,11 +43,11 @@ public interface CrudUtils {
      * @param cs
      * @return true if the method would result in the action being taken on the associated entities.
      */
-    public abstract boolean needCascade( String m, CascadeStyle cs );
+    boolean needCascade( String m, CascadeStyle cs );
 
     /**
      * @return true if the cascade style will result in a
      */
-    public abstract boolean willCascade( CascadeStyle cs );
+    boolean willCascade( CascadeStyle cs );
 
 }

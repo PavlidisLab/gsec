@@ -37,7 +37,7 @@ import gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl;
 public class AclEntryAfterInvocationQuietProvider extends
         org.springframework.security.acls.afterinvocation.AclEntryAfterInvocationProvider {
 
-    private static Log log = LogFactory.getLog( AclEntryAfterInvocationQuietProvider.class );
+    private static final Log log = LogFactory.getLog( AclEntryAfterInvocationQuietProvider.class );
 
     public AclEntryAfterInvocationQuietProvider( AclService aclService, List<Permission> requirePermission ) {
         super( aclService, "AFTER_ACL_READ_QUIET", requirePermission );

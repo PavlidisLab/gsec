@@ -34,7 +34,7 @@ public class AclGrantedAuthoritySid extends AclSid {
     public AclGrantedAuthoritySid( GrantedAuthority grantedAuthority ) {
         Assert.notNull( grantedAuthority, "GrantedAuthority required" );
         Assert.notNull( grantedAuthority.getAuthority(),
-                "This Sid is only compatible with GrantedAuthoritys that provide a non-null getAuthority()" );
+            "This Sid is only compatible with GrantedAuthoritys that provide a non-null getAuthority()" );
         this.grantedAuthority = grantedAuthority.getAuthority();
     }
 

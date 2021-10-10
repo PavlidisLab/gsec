@@ -39,7 +39,7 @@ import net.sf.ehcache.Element;
  */
 public class AclCache implements org.springframework.security.acls.model.AclCache {
 
-    private Ehcache cache;
+    private final Ehcache cache;
     // private AuditLogger auditLogger;
     private AclAuthorizationStrategy aclAuthorizationStrategy;
 
@@ -121,7 +121,7 @@ public class AclCache implements org.springframework.security.acls.model.AclCach
 
         if ( this.aclAuthorizationStrategy == null ) {
             this.aclAuthorizationStrategy = ( AclAuthorizationStrategy ) FieldUtils.getProtectedFieldValue(
-                    "aclAuthorizationStrategy", acl );
+                "aclAuthorizationStrategy", acl );
 
         }
 

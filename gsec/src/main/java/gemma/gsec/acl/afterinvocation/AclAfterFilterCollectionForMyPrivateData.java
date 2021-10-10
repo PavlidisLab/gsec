@@ -49,7 +49,7 @@ import gemma.gsec.model.Securable;
  */
 public class AclAfterFilterCollectionForMyPrivateData extends AbstractAclProvider {
 
-    private Log log = LogFactory.getLog( this.getClass() );
+    private final Log log = LogFactory.getLog( this.getClass() );
 
     @Autowired
     private SecurityService securityService;

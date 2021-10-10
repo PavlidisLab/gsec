@@ -51,7 +51,7 @@ public class AclSidRetrievalStrategyImpl implements SidRetrievalStrategy {
     @Override
     public List<Sid> getSids( Authentication authentication ) {
         Collection<? extends GrantedAuthority> authorities = roleHierarchy
-                .getReachableGrantedAuthorities( authentication.getAuthorities() );
+            .getReachableGrantedAuthorities( authentication.getAuthorities() );
         List<Sid> sids = new ArrayList<>( authorities.size() + 1 );
 
         sids.add( new AclPrincipalSid( authentication ) );

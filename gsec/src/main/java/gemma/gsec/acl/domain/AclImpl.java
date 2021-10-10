@@ -59,7 +59,7 @@ public class AclImpl implements OwnershipAcl {
      * @param owner the owner (required)
      */
     public AclImpl( AclObjectIdentity objectIdentity, AclAuthorizationStrategy aclAuthorizationStrategy,
-            AclImpl parentAcl ) {
+        AclImpl parentAcl ) {
         Assert.notNull( objectIdentity, "Object Identity required" );
         Assert.notNull( aclAuthorizationStrategy, "AclAuthorizationStrategy required" );
         Assert.notNull( objectIdentity.getOwnerSid(), "Owner required" );
@@ -103,24 +103,22 @@ public class AclImpl implements OwnershipAcl {
         if ( ( this.getId() == null && rhs.getId() == null ) || ( this.getId().equals( rhs.getId() ) ) ) {
             if ( ( this.getOwner() == null && rhs.getOwner() == null ) || this.getOwner().equals( rhs.getOwner() ) ) {
                 if ( ( this.objectIdentity == null && rhs.objectIdentity == null )
-                        || ( this.objectIdentity.equals( rhs.objectIdentity ) ) ) {
+                    || ( this.objectIdentity.equals( rhs.objectIdentity ) ) ) {
                     if ( ( this.parentAcl == null && rhs.parentAcl == null )
-                            || ( this.parentAcl.equals( rhs.parentAcl ) ) ) {
+                        || ( this.parentAcl.equals( rhs.parentAcl ) ) ) {
 
-                        if ( this.isEntriesInheriting() == rhs.isEntriesInheriting() ) {
-                            // if ( ( this.loadedSids == null && rhs.loadedSids == null ) ) {
-                            // return true;
-                            // }
-                            // if ( this.loadedSids.size() == rhs.loadedSids.size() ) {
-                            // for ( int i = 0; i < this.loadedSids.size(); i++ ) {
-                            // if ( !this.loadedSids.get( i ).equals( rhs.loadedSids.get( i ) ) ) {
-                            // return false;
-                            // }
-                            // }
-                            // return true;
-                            // }
-                            return true;
-                        }
+                        // if ( ( this.loadedSids == null && rhs.loadedSids == null ) ) {
+                        // return true;
+                        // }
+                        // if ( this.loadedSids.size() == rhs.loadedSids.size() ) {
+                        // for ( int i = 0; i < this.loadedSids.size(); i++ ) {
+                        // if ( !this.loadedSids.get( i ).equals( rhs.loadedSids.get( i ) ) ) {
+                        // return false;
+                        // }
+                        // }
+                        // return true;
+                        // }
+                        return this.isEntriesInheriting() == rhs.isEntriesInheriting();
                     }
 
                 }
@@ -186,7 +184,7 @@ public class AclImpl implements OwnershipAcl {
 
     @Override
     public void insertAce( int atIndexLocation, Permission permission, Sid sid, boolean granting )
-            throws NotFoundException {
+        throws NotFoundException {
 
         assert this.parentAcl == null;
 
@@ -198,7 +196,7 @@ public class AclImpl implements OwnershipAcl {
         }
         if ( atIndexLocation > this.entries.size() ) {
             throw new NotFoundException(
-                    "atIndexLocation must be less than or equal to the size of the AccessControlEntry collection" );
+                "atIndexLocation must be less than or equal to the size of the AccessControlEntry collection" );
         }
 
         AclEntry ace = new AclEntry( null, this, sid, permission, granting );
@@ -247,7 +245,7 @@ public class AclImpl implements OwnershipAcl {
      */
     @Override
     public boolean isGranted( List<Permission> permission, List<Sid> sids, boolean administrativeMode )
-            throws NotFoundException, UnloadedSidException {
+        throws NotFoundException, UnloadedSidException {
         Assert.notEmpty( permission, "Permissions required" );
         Assert.notEmpty( sids, "SIDs required" );
 
@@ -389,7 +387,7 @@ public class AclImpl implements OwnershipAcl {
 
         sb.append( "inheriting: " ).append( this.objectIdentity.getEntriesInheriting() ).append( "; " );
         sb.append( "parent: " ).append(
-                ( this.parentAcl == null ) ? "Null" : this.parentAcl.getObjectIdentity().toString() );
+            ( this.parentAcl == null ) ? "Null" : this.parentAcl.getObjectIdentity().toString() );
         sb.append( "; " );
         sb.append( "aclAuthorizationStrategy: " ).append( this.aclAuthorizationStrategy ).append( "; " );
         // sb.append( "auditLogger: " ).append( this.auditLogger );
@@ -419,7 +417,7 @@ public class AclImpl implements OwnershipAcl {
         }
         if ( aceIndex >= this.entries.size() ) {
             throw new NotFoundException( "aceIndex must refer to an index of the AccessControlEntry list. "
-                    + "List size is " + entries.size() + ", index was " + aceIndex );
+                + "List size is " + entries.size() + ", index was " + aceIndex );
         }
     }
 }

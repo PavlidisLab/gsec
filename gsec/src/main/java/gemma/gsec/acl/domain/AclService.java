@@ -26,6 +26,6 @@ public interface AclService extends MutableAclService {
     /**
      * @param sid
      */
-    public abstract void deleteSid( Sid sid );
+    void deleteSid( Sid sid );
 
 }

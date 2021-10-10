@@ -41,19 +41,19 @@ public interface SecurityService {
      * This is defined in spring-security AuthenticationConfigBuilder, and can be set in the <security:anonymous />
      * configuration of the <security:http/> namespace config
      */
-    public static final String ANONYMOUS = AuthorityConstants.ANONYMOUS_USER_NAME;
+    String ANONYMOUS = AuthorityConstants.ANONYMOUS_USER_NAME;
 
     /**
      * @param userName
      * @param groupName
      */
-    public abstract void addUserToGroup( String userName, String groupName );
+    void addUserToGroup( String userName, String groupName );
 
     /**
      * @param securables
      * @return
      */
-    public abstract <T extends Securable> Map<T, Boolean> areNonPublicButReadableByCurrentUser( Collection<T> securables );
+    <T extends Securable> Map<T, Boolean> areNonPublicButReadableByCurrentUser( Collection<T> securables );
 
     /**
      * A securable is considered "owned" if 1) the user is the actual owner assigned in the ACL or 2) the user is an
@@ -62,7 +62,7 @@ public interface SecurityService {
      * @param securables
      * @return
      */
-    public abstract <T extends Securable> Map<T, Boolean> areOwnedByCurrentUser( Collection<T> securables );
+    <T extends Securable> Map<T, Boolean> areOwnedByCurrentUser( Collection<T> securables );
 
     /**
      * @param securables
@@ -71,26 +71,26 @@ public interface SecurityService {
      *         {@link gemma.gsec.acl.voter.AclCollectionEntryVoter AclCollectionEntryVoter}
      */
     @Secured({ "ACL_SECURABLE_COLLECTION_READ" })
-    public abstract <T extends Securable> Map<T, Boolean> arePrivate( Collection<T> securables );
+    <T extends Securable> Map<T, Boolean> arePrivate( Collection<T> securables );
 
     /**
      * @throws AuthorizationServiceException if the collection is empty, see comments in
      *         {@link gemma.gsec.acl.voter.AclCollectionEntryVoter AclCollectionEntryVoter}
      */
     @Secured({ "ACL_SECURABLE_COLLECTION_READ" })
-    public abstract <T extends Securable> Map<T, Boolean> areShared( Collection<T> securables );
+    <T extends Securable> Map<T, Boolean> areShared( Collection<T> securables );
 
     /**
      * @param securables
      * @return the subset which are private, if any
      */
-    public abstract <T extends Securable> Collection<T> choosePrivate( Collection<T> securables );
+    <T extends Securable> Collection<T> choosePrivate( Collection<T> securables );
 
     /**
      * @param securables
      * @return the subset that are public, if any
      */
-    public abstract <T extends Securable> Collection<T> choosePublic( Collection<T> securables );
+    <T extends Securable> Collection<T> choosePublic( Collection<T> securables );
 
     /**
      * If the group already exists, an exception will be thrown.
@@ -98,7 +98,7 @@ public interface SecurityService {
      * @param groupName
      */
     @Transactional
-    public abstract void createGroup( String groupName );
+    void createGroup( String groupName );
 
     /**
      * @param s
@@ -107,7 +107,7 @@ public interface SecurityService {
      *         {@link gemma.gsec.acl.voter.AclCollectionEntryVoter AclCollectionEntryVoter}
      */
     @Secured({ "ACL_SECURABLE_READ" })
-    public abstract Collection<String> editableBy( Securable s );
+    Collection<String> editableBy( Securable s );
 
     /**
      * Note that this method cannot be secured, but as it only reads permissions on a securable already in scope, it is
@@ -116,7 +116,7 @@ public interface SecurityService {
      * @param s
      * @return
      */
-    public MutableAcl getAcl( Securable s );
+    MutableAcl getAcl( Securable s );
 
     /**
      * Note that this method cannot be secured, but as it only reads permissions on securables already in scope, it is
@@ -125,20 +125,20 @@ public interface SecurityService {
      * @param securables, which could be securedvalueobjects
      * @return
      */
-    public <T extends Securable> Map<T, Acl> getAcls( Collection<T> securables );
+    <T extends Securable> Map<T, Acl> getAcls( Collection<T> securables );
 
     /**
      * We make this available to anonymous
      *
      * @return
      */
-    public abstract Integer getAuthenticatedUserCount();
+    Integer getAuthenticatedUserCount();
 
     /**
      * @return user names
      */
     @Secured("GROUP_ADMIN")
-    public abstract Collection<String> getAuthenticatedUserNames();
+    Collection<String> getAuthenticatedUserNames();
 
     /**
      * This methods is only available to administrators.
@@ -146,9 +146,9 @@ public interface SecurityService {
      * @return collection of all available security ids (basically, user names and group authorities.
      */
     @Secured("GROUP_ADMIN")
-    public abstract Collection<Sid> getAvailableSids();
+    Collection<Sid> getAvailableSids();
 
-    public String getGroupAuthorityNameFromGroupName( String groupName );
+    String getGroupAuthorityNameFromGroupName( String groupName );
 
     /**
      * @param s
@@ -156,41 +156,41 @@ public interface SecurityService {
      *         {@link gemma.gsec.acl.voter.AclCollectionEntryVoter AclCollectionEntryVoter}
      */
     @Secured({ "ACL_SECURABLE_COLLECTION_READ" })
-    public abstract <T extends Securable> Map<T, Collection<String>> getGroupsEditableBy( Collection<T> securables );
+    <T extends Securable> Map<T, Collection<String>> getGroupsEditableBy( Collection<T> securables );
 
     /**
      * @param s
      * @return
      */
     @Secured({ "ACL_SECURABLE_READ" })
-    public abstract Collection<String> getGroupsEditableBy( Securable s );
+    Collection<String> getGroupsEditableBy( Securable s );
 
     /**
      * @param s
      * @return
      */
     @Secured({ "ACL_SECURABLE_COLLECTION_READ" })
-    public abstract <T extends Securable> Map<T, Collection<String>> getGroupsReadableBy( Collection<T> securables );
+    <T extends Securable> Map<T, Collection<String>> getGroupsReadableBy( Collection<T> securables );
 
     /**
      * @param s
      * @return names of groups which have read access to the securable, limited to groups the current user can read.
      */
     @Secured({ "ACL_SECURABLE_READ" })
-    public abstract Collection<String> getGroupsReadableBy( Securable s );
+    Collection<String> getGroupsReadableBy( Securable s );
 
     /**
      * @param userName
      * @return
      */
-    public abstract Collection<String> getGroupsUserCanEdit( String userName );
+    Collection<String> getGroupsUserCanEdit( String userName );
 
     /**
      * @param s
      * @return
      */
     @Secured("ACL_SECURABLE_READ")
-    public abstract Sid getOwner( Securable s );
+    Sid getOwner( Securable s );
 
     /**
      * Pretty much have to be either the owner of the securables or administrator to call this.
@@ -200,7 +200,7 @@ public interface SecurityService {
      * @throws AccessDeniedException if the current user is not allowed to access the information.
      */
     @Secured("ACL_SECURABLE_COLLECTION_READ")
-    public abstract <T extends Securable> Map<T, Sid> getOwners( Collection<T> securables );
+    <T extends Securable> Map<T, Sid> getOwners( Collection<T> securables );
 
     /**
      * Advanced. Determine if the given securables have the required permissions under the given authentication.
@@ -213,8 +213,8 @@ public interface SecurityService {
      * @param authentication
      * @return
      */
-    public <T extends Securable> List<Boolean> hasPermission( List<T> sos, List<Permission> requiredPermissions,
-            Authentication authentication );
+    <T extends Securable> List<Boolean> hasPermission( List<T> sos, List<Permission> requiredPermissions,
+        Authentication authentication );
 
     /**
      * @param svos
@@ -222,8 +222,8 @@ public interface SecurityService {
      * @param authentication
      * @return
      */
-    public Map<SecureValueObject, Boolean> hasPermissionVO( Collection<SecureValueObject> svos,
-            List<Permission> requiredPermissions, Authentication authentication );
+    Map<SecureValueObject, Boolean> hasPermissionVO( Collection<SecureValueObject> svos,
+        List<Permission> requiredPermissions, Authentication authentication );
 
     /**
      * @param svo
@@ -231,15 +231,15 @@ public interface SecurityService {
      * @param authentication
      * @return
      */
-    public boolean hasPermissionVO( SecureValueObject svo, List<Permission> requiredPermissions,
-            Authentication authentication );
+    boolean hasPermissionVO( SecureValueObject svo, List<Permission> requiredPermissions,
+        Authentication authentication );
 
     /**
      * @param s
      * @return true if the current user can edit the securable
      */
     @Secured("ACL_SECURABLE_READ")
-    public abstract boolean isEditable( Securable s );
+    boolean isEditable( Securable s );
 
     /**
      * @param s
@@ -247,7 +247,7 @@ public interface SecurityService {
      * @return
      */
     @Secured("ACL_SECURABLE_READ")
-    public abstract boolean isEditableByGroup( Securable s, String groupName );
+    boolean isEditableByGroup( Securable s, String groupName );
 
     /**
      * @param s
@@ -255,14 +255,14 @@ public interface SecurityService {
      * @return true if the user has WRITE permissions or ADMIN
      */
     @Secured("ACL_SECURABLE_READ")
-    public abstract boolean isEditableByUser( Securable s, String userName );
+    boolean isEditableByUser( Securable s, String userName );
 
     /**
      * @param s
      * @return true if the owner is the same as the current authenticated user. Special case: if the owner is an
      *         administrator, and the uc
      */
-    public abstract boolean isOwnedByCurrentUser( Securable s );
+    boolean isOwnedByCurrentUser( Securable s );
 
     /**
      * Convenience method to determine the visibility of an object.
@@ -272,7 +272,7 @@ public interface SecurityService {
      *         return true (be safe!)
      * @see org.springframework.security.acls.jdbc.BasicLookupStrategy
      */
-    public abstract boolean isPrivate( Securable s );
+    boolean isPrivate( Securable s );
 
     /**
      * Convenience method to determine the visibility of an object.
@@ -280,12 +280,12 @@ public interface SecurityService {
      * @param s
      * @return the negation of isPrivate().
      */
-    public abstract boolean isPublic( Securable s );
+    boolean isPublic( Securable s );
 
     @Secured("ACL_SECURABLE_READ")
-    public abstract boolean isReadableByGroup( Securable s, String groupName );
+    boolean isReadableByGroup( Securable s, String groupName );
 
-    public abstract boolean isShared( Securable s );
+    boolean isShared( Securable s );
 
     /**
      * @param s
@@ -293,7 +293,7 @@ public interface SecurityService {
      * @return true if the given user can read the securable, false otherwise. (READ or ADMINISTRATION required)
      */
     @Secured({ "ACL_SECURABLE_READ" })
-    public abstract boolean isViewableByUser( Securable s, String userName );
+    boolean isViewableByUser( Securable s, String userName );
 
     /**
      * Administrative method to allow a user to get access to an object. This is useful for cases where a data set is
@@ -306,12 +306,12 @@ public interface SecurityService {
      * @param userName
      */
     @Secured("GROUP_ADMIN")
-    public abstract void makeOwnedByUser( Securable s, String userName );
+    void makeOwnedByUser( Securable s, String userName );
 
     /**
      * @param objs
      */
-    public abstract void makePrivate( Collection<? extends Securable> objs );
+    void makePrivate( Collection<? extends Securable> objs );
 
     /**
      * Makes the object private.
@@ -319,13 +319,13 @@ public interface SecurityService {
      * @param object
      */
     @Secured("ACL_SECURABLE_EDIT")
-    public abstract void makePrivate( Securable object );
+    void makePrivate( Securable object );
 
     /**
      * @param objs
      */
     @Transactional
-    public abstract void makePublic( Collection<? extends Securable> objs );
+    void makePublic( Collection<? extends Securable> objs );
 
     /**
      * Makes the object public
@@ -333,7 +333,7 @@ public interface SecurityService {
      * @param object
      */
     @Secured("ACL_SECURABLE_EDIT")
-    public abstract void makePublic( Securable object );
+    void makePublic( Securable object );
 
     /**
      * Adds read permission.
@@ -343,7 +343,7 @@ public interface SecurityService {
      * @throws AccessDeniedException
      */
     @Secured("ACL_SECURABLE_EDIT")
-    public abstract void makeReadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
+    void makeReadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
 
     /**
      * Remove read permissions; also removes write permissions.
@@ -353,7 +353,7 @@ public interface SecurityService {
      * @throws AccessDeniedException
      */
     @Secured("ACL_SECURABLE_EDIT")
-    public abstract void makeUnreadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
+    void makeUnreadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
 
     /**
      * Remove write permissions. Leaves read permissions, if present.
@@ -363,7 +363,7 @@ public interface SecurityService {
      * @throws AccessDeniedException
      */
     @Secured("ACL_SECURABLE_EDIT")
-    public abstract void makeUnwriteableByGroup( Securable s, String groupName ) throws AccessDeniedException;
+    void makeUnwriteableByGroup( Securable s, String groupName ) throws AccessDeniedException;
 
     /**
      * Adds write (and read) permissions.
@@ -373,20 +373,20 @@ public interface SecurityService {
      * @throws AccessDeniedException
      */
     @Secured("ACL_SECURABLE_EDIT")
-    public abstract void makeWriteableByGroup( Securable s, String groupName ) throws AccessDeniedException;
+    void makeWriteableByGroup( Securable s, String groupName ) throws AccessDeniedException;
 
     /**
      * @param s
      * @return list of userNames of users who can read the given securable.
      */
     @Secured("ACL_SECURABLE_EDIT")
-    public abstract Collection<String> readableBy( Securable s );
+    Collection<String> readableBy( Securable s );
 
     /**
      * @param userName
      * @param groupName
      */
-    public abstract void removeUserFromGroup( String userName, String groupName );
+    void removeUserFromGroup( String userName, String groupName );
 
     /**
      * Change the 'owner' of an object to a specific user. Note that this doesn't support making the owner a
@@ -396,6 +396,6 @@ public interface SecurityService {
      * @param userName
      */
     @Secured("GROUP_ADMIN")
-    public abstract void setOwner( Securable s, String userName );
+    void setOwner( Securable s, String userName );
 
 }

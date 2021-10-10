@@ -48,7 +48,7 @@ import gemma.gsec.model.Securable;
  */
 public class AclEntryAfterInvocationCollectionFilteringProvider<A extends Securable> extends AbstractAclProvider {
 
-    private static Log log = LogFactory.getLog( AclEntryAfterInvocationCollectionFilteringProvider.class );
+    private static final Log log = LogFactory.getLog( AclEntryAfterInvocationCollectionFilteringProvider.class );
 
     @Autowired
     private SecurityService securityService;

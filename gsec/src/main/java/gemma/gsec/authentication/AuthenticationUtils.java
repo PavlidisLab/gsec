@@ -41,7 +41,7 @@ import gemma.gsec.AuthorityConstants;
 public class AuthenticationUtils {
 
     public static final String ANONYMOUS_AUTHENTICATION_KEY = "key";
-    private static Log log = LogFactory.getLog( AuthenticationUtils.class.getName() );
+    private static final Log log = LogFactory.getLog( AuthenticationUtils.class.getName() );
 
     /**
      * This is only needed for situations outside the web context.
@@ -62,7 +62,7 @@ public class AuthenticationUtils {
          * also configurable...).
          */
         Authentication authRequest = new AnonymousAuthenticationToken( ANONYMOUS_AUTHENTICATION_KEY,
-                AuthorityConstants.ANONYMOUS_USER_NAME, gas );
+            AuthorityConstants.ANONYMOUS_USER_NAME, gas );
         authRequest = manager.authenticate( authRequest );
         SecurityContextHolder.getContext().setAuthentication( authRequest );
     }

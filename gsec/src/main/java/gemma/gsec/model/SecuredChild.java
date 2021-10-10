@@ -27,6 +27,6 @@ package gemma.gsec.model;
  */
 public interface SecuredChild extends Securable {
 
-    public Securable getSecurityOwner();
+    Securable getSecurityOwner();
 
 }

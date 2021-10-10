@@ -145,10 +145,7 @@ public abstract class ByAssociationFilteringProvider<T extends Securable, A> ext
      */
     @Override
     public final boolean supports( ConfigAttribute attribute ) {
-        if ( ( attribute.getAttribute() != null ) && attribute.getAttribute().equals( getProcessConfigAttribute() ) ) {
-            return true;
-        }
-        return false;
+        return ( attribute.getAttribute() != null ) && attribute.getAttribute().equals( getProcessConfigAttribute() );
     }
 
     /**

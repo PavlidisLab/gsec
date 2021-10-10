@@ -40,7 +40,7 @@ import org.springframework.util.Assert;
  */
 public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
 
-    private static PermissionFactory permissionFactory = new DefaultPermissionFactory();
+    private static final PermissionFactory permissionFactory = new DefaultPermissionFactory();
 
     /**
      * The serial version UID of this class. Needed for serialization.
@@ -103,7 +103,7 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
      */
     final public AccessControlEntry convert( Acl a ) {
         return new AccessControlEntryImpl( this.id, a, this.sid, permissionFactory.buildFromMask( this.mask ),
-                this.granting, false, false );
+            this.granting, false, false );
     }
 
     /*
@@ -129,9 +129,8 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
             if ( other.mask != null ) return false;
         } else if ( !mask.equals( other.mask ) ) return false;
         if ( sid == null ) {
-            if ( other.sid != null ) return false;
-        } else if ( !sid.equals( other.sid ) ) return false;
-        return true;
+            return other.sid == null;
+        } else return sid.equals( other.sid );
     }
 
     /**

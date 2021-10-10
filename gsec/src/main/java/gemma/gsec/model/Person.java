@@ -26,12 +26,12 @@ public interface Person extends Contact, Securable {
     /**
      *
      */
-    public abstract String getFullName();
+    String getFullName();
 
     /**
      *
      */
-    public String getLastName();
+    String getLastName();
 
-    public void setLastName( String lastName );
+    void setLastName( String lastName );
 }

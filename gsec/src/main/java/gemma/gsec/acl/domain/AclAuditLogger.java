@@ -33,9 +33,9 @@ import org.springframework.security.acls.model.AuditableAccessControlEntry;
  */
 public class AclAuditLogger implements AuditLogger {
 
-    private static Log log = LogFactory.getLog( AclAuditLogger.class );
+    private static final Log log = LogFactory.getLog( AclAuditLogger.class );
 
-    private static boolean needToLog = false;
+    private static final boolean needToLog = false;
 
     @Override
     public void logIfNeeded( boolean granted, AccessControlEntry ace ) {

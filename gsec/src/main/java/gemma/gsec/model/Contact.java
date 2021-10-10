@@ -30,7 +30,7 @@ public interface Contact extends Serializable {
     /**
      *
      */
-    public String getEmail();
+    String getEmail();
 
-    public void setEmail( String email );
+    void setEmail( String email );
 }

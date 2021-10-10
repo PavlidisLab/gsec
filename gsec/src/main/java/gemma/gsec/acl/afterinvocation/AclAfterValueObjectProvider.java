@@ -47,7 +47,7 @@ import gemma.gsec.util.SecurityUtil;
 public class AclAfterValueObjectProvider extends
         org.springframework.security.acls.afterinvocation.AclEntryAfterInvocationProvider {
 
-    private static Log log = LogFactory.getLog( AclAfterValueObjectProvider.class );
+    private static final Log log = LogFactory.getLog( AclAfterValueObjectProvider.class );
 
     @Autowired
     private SecurityService securityService;

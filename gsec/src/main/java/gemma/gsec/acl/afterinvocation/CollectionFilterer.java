@@ -34,9 +34,9 @@ class CollectionFilterer<T> implements Filterer<T> {
 
     protected static final Log logger = LogFactory.getLog( CollectionFilterer.class );
 
-    private Collection<T> collection;
+    private final Collection<T> collection;
     private Iterator<T> collectionIter;
-    private Set<T> removeList;
+    private final Set<T> removeList;
 
     CollectionFilterer( Collection<T> collection ) {
         this.collection = collection;

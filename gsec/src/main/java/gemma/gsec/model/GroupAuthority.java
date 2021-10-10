@@ -29,15 +29,15 @@ import java.io.Serializable;
  */
 public interface GroupAuthority extends Serializable {
 
-    public String getAuthority();
+    String getAuthority();
 
     /**
      *
      */
-    public Long getId();
+    Long getId();
 
-    public void setAuthority( String authority );
+    void setAuthority( String authority );
 
-    public void setId( Long id );
+    void setId( Long id );
 
 }
