@@ -27,7 +27,7 @@
  * Subclass BaseAclAdvice and wire into your CRUD methods. For example Gemma uses the
  * SystemArchitectureAspect.modifier() pointcut.
  * <p>
- * Include the security-bean-baseconfig.xml bean definitions file in your context configuration.
+ * Include the applicationContext-component-scan.xml bean definitions file in your context configuration.
  * <p>
  * Any other security configuration will have to be provided in additional bean declarations.
  *

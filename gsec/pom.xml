@@ -60,6 +60,19 @@
             <version>${hibernate.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-ehcache</artifactId>
+            <version>${hibernate.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <!-- required by hibernate, explicitly import so we get it at runtime. -->
+            <groupId>javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.4.GA</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>org.hibernate.javax.persistence</groupId>
             <artifactId>hibernate-jpa-2.0-api</artifactId>
             <version>1.0.1.Final</version>
@@ -154,6 +167,7 @@
         </dependency>
 
         <!-- Servlet API -->
+        <!-- This is provided by the Web server (i.e. Tomcat or Jetty). -->
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
@@ -171,6 +185,32 @@
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
             <version>1.7.4</version>
+        </dependency>
+
+        <!-- Testing support -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>${spring.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>1.4.200</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-dbcp2</artifactId>
+            <version>2.9.0</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <repositories>
@@ -204,6 +244,11 @@
                 </includes>
             </resource>
         </resources>
+        <testResources>
+            <testResource>
+                <directory>${basedir}/src/test/resources</directory>
+            </testResource>
+        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -220,17 +265,17 @@
                 <version>1.7</version>
                 <configuration>
                     <target>
-                        <echo message="******* Building ACL DDL file *******" />
+                        <echo message="******* Building ACL DDL file *******"/>
                         <taskdef name="schemaexport" classname="org.hibernate.tool.hbm2ddl.SchemaExportTask">
                             <classpath>
-                                <path refid="maven.dependency.classpath" />
+                                <path refid="maven.dependency.classpath"/>
                             </classpath>
                         </taskdef>
-                        <mkdir dir="target/schema" />
+                        <mkdir dir="target/schema"/>
                         <schemaexport quiet="true" text="true" create="true" drop="false" delimiter=";"
                                       output="${project.build.directory}/schema/gsec-acl-ddl.sql"
                                       properties="${basedir}/src/main/resources/hibernate.properties">
-                            <fileset dir="src/main/resources" includes="**/*.hbm.xml" />
+                            <fileset dir="src/main/resources" includes="**/*.hbm.xml"/>
                         </schemaexport>
                     </target>
                 </configuration>
@@ -272,7 +317,7 @@
                                         </goals>
                                     </pluginExecutionFilter>
                                     <action>
-                                        <ignore />
+                                        <ignore/>
                                     </action>
                                 </pluginExecution>
                             </pluginExecutions>
