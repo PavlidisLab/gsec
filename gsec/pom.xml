@@ -54,6 +54,8 @@
             <artifactId>commons-logging</artifactId>
             <version>1.2</version>
         </dependency>
+
+        <!-- Hibernate -->
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
@@ -69,7 +71,7 @@
             <!-- required by hibernate, explicitly import so we get it at runtime. -->
             <groupId>javassist</groupId>
             <artifactId>javassist</artifactId>
-            <version>3.4.GA</version>
+            <version>3.12.1.GA</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
