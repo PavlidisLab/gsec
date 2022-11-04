@@ -4,7 +4,7 @@
     <parent>
         <groupId>ubc.pavlab</groupId>
         <artifactId>pavlab-starter-parent</artifactId>
-        <version>1.1.2</version>
+        <version>1.1.9</version>
     </parent>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
@@ -284,6 +284,16 @@
                     </dependency>
                 </dependencies>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <quiet>true</quiet>
+                    <source>8</source>
+                    <doclint>none</doclint>
+                </configuration>
+            </plugin>
         </plugins>
         <pluginManagement>
             <plugins>
@@ -316,23 +326,6 @@
             </plugins>
         </pluginManagement>
     </build>
-    <distributionManagement>
-        <site>
-            <id>otto</id>
-            <name>otto</name>
-            <url>scpexe://otto.pavlab.chibi.ubc.ca:/space/gemmaData/baseCode-site</url>
-        </site>
-        <repository>
-            <id>repo</id>
-            <name>Pavlab</name>
-            <url>scpexe://otto.pavlab.chibi.ubc.ca:/space/maven2</url>
-        </repository>
-        <snapshotRepository>
-            <id>repo</id>
-            <name>Pavlab</name>
-            <url>scpexe://otto.pavlab.chibi.ubc.ca:/space/maven2</url>
-        </snapshotRepository>
-    </distributionManagement>
     <profiles>
         <profile>
             <!-- For deployment where host is local (and ssh isn't available for builder, e.g. CI) -->
@@ -349,23 +342,10 @@
                     <name>localDeploy</name>
                     <url>file:///space/gemmaData/gsec-site</url>
                 </site>
-                <repository>
-                    <id>repo</id>
-                    <name>Pavlab</name>
-                    <url>file:///space/maven2</url>
-                </repository>
-                <snapshotRepository>
-                    <id>repo</id>
-                    <name>Pavlab</name>
-                    <url>file:///space/maven2</url>
-                </snapshotRepository>
             </distributionManagement>
         </profile>
     </profiles>
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
         <spring.version>3.2.18.RELEASE</spring.version>
         <spring.security.version>3.2.10.RELEASE</spring.security.version>
     </properties>
