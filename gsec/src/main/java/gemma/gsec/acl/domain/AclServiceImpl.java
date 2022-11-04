@@ -18,60 +18,32 @@
  */
 package gemma.gsec.acl.domain;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.acls.model.Acl;
-import org.springframework.security.acls.model.AlreadyExistsException;
-import org.springframework.security.acls.model.ChildrenExistException;
-import org.springframework.security.acls.model.MutableAcl;
-import org.springframework.security.acls.model.NotFoundException;
-import org.springframework.security.acls.model.ObjectIdentity;
-import org.springframework.security.acls.model.Sid;
+import org.springframework.security.acls.model.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author paul
  * @version $Id: AclServiceImpl.java,v 1.1 2013/09/14 16:55:19 paul Exp $
  */
-@Component(value = "aclService")
+@Service(value = "aclService")
+@Transactional
 public class AclServiceImpl implements AclService {
 
     private static final Log log = LogFactory.getLog( AclServiceImpl.class.getName() );
 
     @Autowired
     private AclDao aclDao;
-
-    private final TransactionTemplate transactionTemplate;
-
-    @Autowired
-    public AclServiceImpl( PlatformTransactionManager transactionManager ) {
-        assert transactionManager != null;
-
-        /*
-         * only used for read-only methods. Other methods always happen in an existing transaction. This is a bit of a
-         * hack, but @Transactional annotations are not being picked up here. But this works fine.
-         */
-
-        this.transactionTemplate = new TransactionTemplate( transactionManager );
-        this.transactionTemplate.setPropagationBehavior( TransactionDefinition.PROPAGATION_REQUIRES_NEW );
-        this.transactionTemplate.setReadOnly( true );
-
-    }
 
     /*
      * (non-Javadoc)
@@ -81,8 +53,6 @@ public class AclServiceImpl implements AclService {
      */
     @Override
     public MutableAcl createAcl( ObjectIdentity objectIdentity ) throws AlreadyExistsException {
-        assert TransactionSynchronizationManager.isActualTransactionActive();
-
         // Check this object identity hasn't already been persisted
         if ( find( objectIdentity ) != null ) {
             Acl acl = this.readAclById( objectIdentity );
@@ -116,8 +86,6 @@ public class AclServiceImpl implements AclService {
      */
     @Override
     public void deleteAcl( ObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException {
-        assert TransactionSynchronizationManager.isActualTransactionActive();
-
         aclDao.delete( find( objectIdentity ), deleteChildren );
     }
 
@@ -127,29 +95,14 @@ public class AclServiceImpl implements AclService {
      * @param sid
      */
     @Override
-    @Transactional
     public void deleteSid( Sid sid ) {
-        assert TransactionSynchronizationManager.isActualTransactionActive();
-
         aclDao.delete( sid );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ObjectIdentity> findChildren( final ObjectIdentity parentIdentity ) {
-
-        if ( TransactionSynchronizationManager.isActualTransactionActive() ) {
-            return aclDao.findChildren( parentIdentity );
-
-        }
-
-        return transactionTemplate.execute( new TransactionCallback<List<ObjectIdentity>>() {
-
-            @Override
-            public List<ObjectIdentity> doInTransaction( TransactionStatus status ) {
-                return aclDao.findChildren( parentIdentity );
-            }
-        } );
-
+        return aclDao.findChildren( parentIdentity );
     }
 
     /*
@@ -161,11 +114,13 @@ public class AclServiceImpl implements AclService {
      * )
      */
     @Override
+    @Transactional(readOnly = true)
     public Acl readAclById( ObjectIdentity object ) throws NotFoundException {
         return readAclById( object, null );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Acl readAclById( ObjectIdentity object, List<Sid> sids ) throws NotFoundException {
         Map<ObjectIdentity, Acl> map = readAclsById( Arrays.asList( object ), sids );
         return map.get( object );
@@ -177,6 +132,7 @@ public class AclServiceImpl implements AclService {
      * @see org.springframework.security.acls.model.AclService#readAclsById(java.util.List)
      */
     @Override
+    @Transactional(readOnly = true)
     public Map<ObjectIdentity, Acl> readAclsById( List<ObjectIdentity> objects ) throws NotFoundException {
         return readAclsById( objects, null );
     }
@@ -187,23 +143,10 @@ public class AclServiceImpl implements AclService {
      * @see org.springframework.security.acls.model.AclService#readAclsById(java.util.List, java.util.List)
      */
     @Override
+    @Transactional(readOnly = true)
     public Map<ObjectIdentity, Acl> readAclsById( final List<ObjectIdentity> objects, final List<Sid> sids )
         throws NotFoundException {
-
-        if ( TransactionSynchronizationManager.isActualTransactionActive() ) {
-            return doReadAcls( objects, sids );
-        }
-
-        return transactionTemplate.execute( new TransactionCallback<Map<ObjectIdentity, Acl>>() {
-
-            @Override
-            public Map<ObjectIdentity, Acl> doInTransaction( TransactionStatus status ) {
-                // deals with cache.
-                return doReadAcls( objects, sids );
-            }
-
-        } );
-
+        return doReadAcls( objects, sids );
     }
 
     /*
@@ -214,18 +157,7 @@ public class AclServiceImpl implements AclService {
      */
     @Override
     public MutableAcl updateAcl( final MutableAcl acl ) throws NotFoundException {
-        if ( TransactionSynchronizationManager.isActualTransactionActive() ) {
-            return doUpdateAcl( acl );
-        }
-
-        return transactionTemplate.execute( new TransactionCallback<MutableAcl>() {
-            @Override
-            public MutableAcl doInTransaction( TransactionStatus status ) {
-                // deals with cache.
-                return doUpdateAcl( acl );
-            }
-
-        } );
+        return doUpdateAcl( acl );
     }
 
     /**
@@ -289,7 +221,6 @@ public class AclServiceImpl implements AclService {
      * @return
      */
     private MutableAcl doUpdateAcl( MutableAcl acl ) {
-        assert TransactionSynchronizationManager.isActualTransactionActive();
         Assert.notNull( acl.getId(), "Object Identity doesn't provide an identifier" );
         aclDao.update( acl );
         return acl;

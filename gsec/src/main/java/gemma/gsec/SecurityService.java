@@ -26,7 +26,6 @@ import org.springframework.security.acls.model.MutableAcl;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.acls.model.Sid;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 
 import gemma.gsec.model.Securable;
 import gemma.gsec.model.SecureValueObject;
@@ -97,7 +96,6 @@ public interface SecurityService {
      *
      * @param groupName
      */
-    @Transactional
     void createGroup( String groupName );
 
     /**
@@ -324,7 +322,6 @@ public interface SecurityService {
     /**
      * @param objs
      */
-    @Transactional
     void makePublic( Collection<? extends Securable> objs );
 
     /**

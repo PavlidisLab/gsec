@@ -36,7 +36,7 @@ import org.springframework.security.authentication.event.InteractiveAuthenticati
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 /**
  * Process authentication requests that come from outside a web context. This is used for command line interfaces, for
@@ -45,7 +45,7 @@ import org.springframework.stereotype.Component;
  * @author keshav
  * @version $Id: ManualAuthenticationServiceImpl.java,v 1.5 2013/09/22 18:50:42 paul Exp $
  */
-@Component("manualAuthenticationService")
+@Service("manualAuthenticationService")
 public class ManualAuthenticationServiceImpl implements ApplicationContextAware, InitializingBean,
     ManualAuthenticationService {
     private static final Log log = LogFactory.getLog( ManualAuthenticationServiceImpl.class.getName() );

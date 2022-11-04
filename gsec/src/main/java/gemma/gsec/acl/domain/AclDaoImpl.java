@@ -14,17 +14,6 @@
  */
 package gemma.gsec.acl.domain;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.persistence.EntityNotFoundException;
-
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -34,15 +23,15 @@ import org.hibernate.SessionFactory;
 import org.hibernate.classic.Session;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.acls.domain.AclAuthorizationStrategy;
-import org.springframework.security.acls.model.AccessControlEntry;
-import org.springframework.security.acls.model.Acl;
 import org.springframework.security.acls.model.AclCache;
-import org.springframework.security.acls.model.MutableAcl;
-import org.springframework.security.acls.model.ObjectIdentity;
-import org.springframework.security.acls.model.Sid;
-import org.springframework.stereotype.Component;
+import org.springframework.security.acls.model.*;
+import org.springframework.stereotype.Repository;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
+
+import javax.persistence.EntityNotFoundException;
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * We have our own implementation of the AclDao in part because of deadlock problems caused by the default JDBC-based
@@ -56,7 +45,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Paul
  */
-@Component(value = "aclDao")
+@Repository(value = "aclDao")
 public class AclDaoImpl implements AclDao {
 
     private static final Log log = LogFactory.getLog( AclDaoImpl.class );
