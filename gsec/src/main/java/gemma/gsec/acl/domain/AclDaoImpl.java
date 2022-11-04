@@ -76,7 +76,7 @@ public class AclDaoImpl implements AclDao {
         AclObjectIdentity aoi = new AclObjectIdentity( type, identifier );
         aoi.setOwnerSid( sid );
         aoi.setEntriesInheriting( entitiesInheriting );
-        this.getSessionFactory().getCurrentSession().save( aoi );
+        this.getSessionFactory().getCurrentSession().persist( aoi );
         return aoi;
     }
 
@@ -229,7 +229,7 @@ public class AclDaoImpl implements AclDao {
         if ( fsid != null ) return fsid;
 
         assert sid instanceof AclSid;
-        this.getSessionFactory().getCurrentSession().save( sid );
+        this.getSessionFactory().getCurrentSession().persist( sid );
 
         return ( AclSid ) sid;
 
