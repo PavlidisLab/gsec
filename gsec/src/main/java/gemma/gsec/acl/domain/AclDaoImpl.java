@@ -339,38 +339,34 @@ public class AclDaoImpl implements AclDao {
         /*
          * This fixes problems with premature commits causing IDs to be erased on some entities.
          */
-        try {
-            this.getSessionFactory().getCurrentSession().setFlushMode( FlushMode.COMMIT );
+        this.getSessionFactory().getCurrentSession().setFlushMode( FlushMode.COMMIT );
 
-            AclObjectIdentity aclObjectIdentity = convert( acl );
+        AclObjectIdentity aclObjectIdentity = convert( acl );
 
-            // the ObjectIdentity might already be in the session.
-            aclObjectIdentity = ( AclObjectIdentity ) this.getSessionFactory().getCurrentSession()
-                .merge( aclObjectIdentity );
+        // the ObjectIdentity might already be in the session.
+        aclObjectIdentity = ( AclObjectIdentity ) this.getSessionFactory().getCurrentSession()
+            .merge( aclObjectIdentity );
 
-            if ( acl.getParentAcl() != null ) {
+        if ( acl.getParentAcl() != null ) {
 
-                if ( log.isTraceEnabled() )
-                    log.trace( "       Updating ACL on parent: " + acl.getParentAcl().getObjectIdentity() );
+            if ( log.isTraceEnabled() )
+                log.trace( "       Updating ACL on parent: " + acl.getParentAcl().getObjectIdentity() );
 
-                update( ( MutableAcl ) acl.getParentAcl() );
-                this.getSessionFactory().getCurrentSession().evict( acl.getParentAcl() );
-                aclObjectIdentity.setParentObject( convert( ( MutableAcl ) acl.getParentAcl() ) );
-                assert aclObjectIdentity.getParentObject() != null;
-            } else {
-                // should be impossible to go from non-null to null, but just in case ...
-                assert aclObjectIdentity.getParentObject() == null;
-            }
-
-            this.getSessionFactory().getCurrentSession().update( aclObjectIdentity );
-
-            evictFromCache( aclObjectIdentity );
-
-            // children are left out, no big deal. Eviction more important.
-            this.aclCache.putInCache( convertToAcl( aclObjectIdentity ) );
-        } finally {
-            this.getSessionFactory().getCurrentSession().setFlushMode( FlushMode.AUTO );
+            update( ( MutableAcl ) acl.getParentAcl() );
+            this.getSessionFactory().getCurrentSession().evict( acl.getParentAcl() );
+            aclObjectIdentity.setParentObject( convert( ( MutableAcl ) acl.getParentAcl() ) );
+            assert aclObjectIdentity.getParentObject() != null;
+        } else {
+            // should be impossible to go from non-null to null, but just in case ...
+            assert aclObjectIdentity.getParentObject() == null;
         }
+
+        this.getSessionFactory().getCurrentSession().update( aclObjectIdentity );
+
+        evictFromCache( aclObjectIdentity );
+
+        // children are left out, no big deal. Eviction more important.
+        this.aclCache.putInCache( convertToAcl( aclObjectIdentity ) );
 
         if ( log.isTraceEnabled() )
             log.trace( " >>>>>>>>>> Done with database update of acl for: " + acl.getObjectIdentity() );
