@@ -252,16 +252,12 @@
             </resource>
             <resource>
                 <directory>target/schema</directory>
+                <targetPath>gemma/gsec/sql</targetPath>
                 <includes>
                     <include>**/*</include>
                 </includes>
             </resource>
         </resources>
-        <testResources>
-            <testResource>
-                <directory>${basedir}/src/test/resources</directory>
-            </testResource>
-        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -278,8 +274,9 @@
                         <mkdir dir="${project.build.directory}/schema"/>
                         <schemaexport quiet="true" text="true" create="true" drop="false" delimiter=";"
                                       output="${project.build.directory}/schema/gsec-acl-ddl.sql"
-                                      properties="${project.basedir}/src/main/resources/hibernate.properties">
-                            <fileset dir="${project.basedir}/src/main/resources" includes="**/*.hbm.xml"/>
+                                      properties="${project.basedir}/src/main/resources/gemma/gsec/hibernate.properties">
+                            <fileset dir="${project.basedir}/src/main/resources/gemma/gsec/model"
+                                     includes="**/*.hbm.xml"/>
                         </schemaexport>
                     </target>
                 </configuration>
