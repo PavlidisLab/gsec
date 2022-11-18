@@ -18,14 +18,15 @@
  */
 package gemma.gsec;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
-
+import gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl;
+import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
+import gemma.gsec.acl.domain.AclPrincipalSid;
+import gemma.gsec.acl.domain.AclService;
+import gemma.gsec.authentication.UserManager;
+import gemma.gsec.model.Securable;
+import gemma.gsec.model.SecureValueObject;
+import gemma.gsec.model.UserGroup;
+import gemma.gsec.util.SecurityUtil;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -35,15 +36,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.access.vote.AuthenticatedVoter;
 import org.springframework.security.acls.domain.BasePermission;
-import org.springframework.security.acls.model.AccessControlEntry;
-import org.springframework.security.acls.model.Acl;
-import org.springframework.security.acls.model.MutableAcl;
-import org.springframework.security.acls.model.NotFoundException;
-import org.springframework.security.acls.model.ObjectIdentity;
-import org.springframework.security.acls.model.ObjectIdentityRetrievalStrategy;
-import org.springframework.security.acls.model.Permission;
-import org.springframework.security.acls.model.Sid;
-import org.springframework.security.acls.model.SidRetrievalStrategy;
+import org.springframework.security.acls.model.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -54,15 +47,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl;
-import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
-import gemma.gsec.acl.domain.AclPrincipalSid;
-import gemma.gsec.acl.domain.AclService;
-import gemma.gsec.authentication.UserManager;
-import gemma.gsec.model.Securable;
-import gemma.gsec.model.SecureValueObject;
-import gemma.gsec.model.UserGroup;
-import gemma.gsec.util.SecurityUtil;
+import java.util.*;
 
 /**
  * Methods for changing security on objects, creating and modifying groups, checking security on objects.

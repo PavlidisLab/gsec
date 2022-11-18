@@ -14,9 +14,7 @@
  */
 package gemma.gsec.acl.afterinvocation;
 
-import java.util.Collection;
-import java.util.List;
-
+import gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,9 +22,9 @@ import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.acls.model.AclService;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 
-import gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Overrides default behaviour by returning null, rather than throwing an access denied exception
@@ -45,7 +43,6 @@ public class AclEntryAfterInvocationQuietProvider extends
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Object decide( Authentication authentication, Object object, Collection<ConfigAttribute> config,
             Object returnedObject ) throws AccessDeniedException {
         try {

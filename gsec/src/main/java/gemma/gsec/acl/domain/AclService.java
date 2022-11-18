@@ -24,8 +24,7 @@ import org.springframework.security.acls.model.Sid;
 public interface AclService extends MutableAclService {
 
     /**
-     * @param sid
+     * Remove an {@link Sid} and all associated ACEs.
      */
     void deleteSid( Sid sid );
-
 }
