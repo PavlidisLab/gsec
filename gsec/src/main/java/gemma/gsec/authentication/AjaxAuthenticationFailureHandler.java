@@ -14,18 +14,15 @@
  */
 package gemma.gsec.authentication;
 
-import java.io.IOException;
+import org.json.JSONObject;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.web.DefaultRedirectStrategy;
-import org.springframework.security.web.RedirectStrategy;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
-
-import gemma.gsec.util.JSONUtil;
+import java.io.IOException;
 
 /**
  * Strategy used to handle a failed user authentication if it is a ajax style login (ajaxLoginTrue parameter = true)
@@ -42,36 +39,15 @@ public class AjaxAuthenticationFailureHandler extends SimpleUrlAuthenticationFai
     @Override
     public void onAuthenticationFailure( HttpServletRequest request, HttpServletResponse response,
         AuthenticationException exception ) throws ServletException, IOException {
-
         String ajaxLoginTrue = request.getParameter( "ajaxLoginTrue" );
-
         if ( ajaxLoginTrue != null && ajaxLoginTrue.equals( "true" ) ) {
-
-            JSONUtil jsonUtil = new JSONUtil( request, response );
-            String jsonText = null;
-
-            this.setRedirectStrategy( new RedirectStrategy() {
-
-                @Override
-                public void sendRedirect( HttpServletRequest re, HttpServletResponse res, String s ) {
-                    // do nothing, no redirect to make it work with extjs
-
-                }
-            } );
-
-            super.onAuthenticationFailure( request, response, exception );
-
-            jsonText = "{success:false}";
-            jsonUtil.writeToResponse( jsonText );
-
+            JSONObject json = new JSONObject();
+            json.put( "success", false );
+            response.setContentType( MediaType.APPLICATION_JSON_VALUE );
+            response.sendError( HttpServletResponse.SC_UNAUTHORIZED, json.toString() );
         } else {
-
-            this.setRedirectStrategy( new DefaultRedirectStrategy() );
-
             super.onAuthenticationFailure( request, response, exception );
-
         }
-
     }
 
 }

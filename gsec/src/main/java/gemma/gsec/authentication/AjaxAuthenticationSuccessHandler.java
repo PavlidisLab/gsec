@@ -14,19 +14,17 @@
  */
 package gemma.gsec.authentication;
 
-import java.io.IOException;
+import gemma.gsec.util.SecurityUtil;
+import org.json.JSONObject;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.security.web.DefaultRedirectStrategy;
-import org.springframework.security.web.RedirectStrategy;
-import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
-
-import gemma.gsec.util.JSONUtil;
-import gemma.gsec.util.SecurityUtil;
+import java.io.IOException;
+import java.io.Writer;
 
 /**
  * Strategy used to handle a successful user authentication if it is a ajax style login (ajaxLoginTrue parameter = true)
@@ -44,36 +42,22 @@ public class AjaxAuthenticationSuccessHandler extends SavedRequestAwareAuthentic
     @Override
     public void onAuthenticationSuccess( HttpServletRequest request, HttpServletResponse response,
         Authentication authentication ) throws ServletException, IOException {
-
         String ajaxLoginTrue = request.getParameter( "ajaxLoginTrue" );
-
         if ( ajaxLoginTrue != null && ajaxLoginTrue.equals( "true" ) ) {
-
-            JSONUtil jsonUtil = new JSONUtil( request, response );
-            String jsonText = null;
-
-            this.setRedirectStrategy( new RedirectStrategy() {
-
-                @Override
-                public void sendRedirect( HttpServletRequest re, HttpServletResponse res, String s ) {
-                    // do nothing, no redirect to make it work with extjs
-
-                }
-            } );
-
-            super.onAuthenticationSuccess( request, response, authentication );
             authentication.getName();
-
-            jsonText = "{success:true,user:'" + authentication.getName() + "',isAdmin:" + SecurityUtil.isUserAdmin()
-                + "}";
-            jsonUtil.writeToResponse( jsonText );
+            JSONObject json = new JSONObject();
+            json.put( "success", true );
+            json.put( "user", authentication.getName() );
+            json.put( "isAdmin", SecurityUtil.isUserAdmin() );
+            String jsonText = json.toString();
+            response.setContentType( MediaType.APPLICATION_JSON_VALUE );
+            response.setContentLength( jsonText.length() );
+            try ( Writer out = response.getWriter() ) {
+                out.write( jsonText );
+            }
         } else {
-
-            this.setRedirectStrategy( new DefaultRedirectStrategy() );
-
             super.onAuthenticationSuccess( request, response, authentication );
         }
-
     }
 
 }
