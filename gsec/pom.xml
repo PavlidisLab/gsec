@@ -4,7 +4,7 @@
     <parent>
         <groupId>ubc.pavlab</groupId>
         <artifactId>pavlab-starter-parent</artifactId>
-        <version>1.1.9</version>
+        <version>1.1.9-SNAPSHOT</version>
     </parent>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
