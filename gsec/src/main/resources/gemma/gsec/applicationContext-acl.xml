@@ -19,9 +19,7 @@
 	</bean>
 
 	<bean id="permissionEvaluator" class="org.springframework.security.acls.AclPermissionEvaluator">
-		<constructor-arg>
-			<ref bean="aclService"/>
-		</constructor-arg>
+		<constructor-arg ref="aclService"/>
 		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
 		<property name="objectIdentityRetrievalStrategy">
 			<bean class="gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl"/>
@@ -46,7 +44,7 @@
 	<!-- Decide whether the user has access to a particular resource, method, or data -->
 	<bean id="accessDecisionManager" class="org.springframework.security.access.vote.UnanimousBased">
 		<property name="allowIfAllAbstainDecisions" value="false"/>
-		<property name="decisionVoters">
+		<constructor-arg name="decisionVoters">
 			<list>
 				<ref bean="securableEditVoter"/>
 				<ref bean="securableReadVoter"/>
@@ -63,7 +61,7 @@
 				</bean>
 				<ref local="securableCollectionReadVoter"/>
 			</list>
-		</property>
+		</constructor-arg>
 	</bean>
 
 	<!-- role-based voting, in which roles inherit from each other. GROUP_ADMIN has all the rights of GROUP_USER for example. -->
@@ -145,13 +143,13 @@
 	<bean id="aclAuthorizationStrategy" class="gemma.gsec.acl.AclAuthorizationStrategyImpl">
 		<constructor-arg>
 			<list>
-				<bean class="org.springframework.security.core.authority.GrantedAuthorityImpl">
+				<bean class="org.springframework.security.core.authority.SimpleGrantedAuthority">
 					<constructor-arg value="GROUP_ADMIN"/> <!-- change acl ownership -->
 				</bean>
-				<bean class="org.springframework.security.core.authority.GrantedAuthorityImpl">
+				<bean class="org.springframework.security.core.authority.SimpleGrantedAuthority">
 					<constructor-arg value="GROUP_ADMIN"/> <!-- change acl auditing -->
 				</bean>
-				<bean class="org.springframework.security.core.authority.GrantedAuthorityImpl">
+				<bean class="org.springframework.security.core.authority.SimpleGrantedAuthority">
 					<constructor-arg value="GROUP_ADMIN"/> <!-- change acl details -->
 				</bean>
 			</list>
