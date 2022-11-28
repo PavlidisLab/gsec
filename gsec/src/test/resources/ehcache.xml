@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd">
+    <cache name="org.hibernate.cache.internal.StandardQueryCache" maxElementsInMemory="5000" timeToLiveSeconds="60000"
+           timeToIdleSeconds="0" overflowToDisk="false"/>
+    <cache name="org.hibernate.cache.spi.UpdateTimestampsCache" maxElementsOnDisk="10000" maxElementsInMemory="5000"
+           eternal="true" overflowToDisk="false"/>
+    <cache name="gemma.gsec.acl.domain.AclSid" maxElementsInMemory="100" timeToIdleSeconds="1200"
+           timeToLiveSeconds="1200" overflowToDisk="false"/>
+    <cache name="gemma.gsec.acl.domain.AclEntry" maxElementsInMemory="10000" timeToIdleSeconds="1200"
+           timeToLiveSeconds="1200" overflowToDisk="false"/>
+    <cache name="gemma.gsec.acl.domain.AclObjectIdentity" maxElementsInMemory="10000" timeToIdleSeconds="1200"
+           timeToLiveSeconds="1200" overflowToDisk="false"/>
+    <cache name="gemma.gsec.acl.domain.AclObjectIdentity.entries" maxElementsInMemory="100" timeToIdleSeconds="1200"
+           timeToLiveSeconds="1200" overflowToDisk="false"/>
+</ehcache>
