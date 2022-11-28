@@ -325,7 +325,6 @@ public class AclDaoImpl implements AclDao {
                 log.trace( "       Updating ACL on parent: " + acl.getParentAcl().getObjectIdentity() );
 
             update( ( MutableAcl ) acl.getParentAcl() );
-            this.getSessionFactory().getCurrentSession().evict( acl.getParentAcl() );
             aclObjectIdentity.setParentObject( convert( ( MutableAcl ) acl.getParentAcl() ) );
             assert aclObjectIdentity.getParentObject() != null;
         } else {
