@@ -18,18 +18,13 @@
  */
 package gemma.gsec.util;
 
-import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.SessionFactory;
-import org.hibernate.engine.CascadeStyle;
-import org.hibernate.engine.CascadingAction;
+import org.hibernate.engine.spi.CascadeStyle;
+import org.hibernate.engine.spi.CascadingAction;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.metadata.CollectionMetadata;
 import org.hibernate.persister.collection.CollectionPersister;
@@ -40,6 +35,11 @@ import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Convenience methods needed to perform CRUD operations on entities.
@@ -309,8 +309,7 @@ public class CrudUtilsImpl implements InitializingBean, CrudUtils, BeanFactoryAw
      * @return
      */
     private boolean needCascade( CascadeStyle cs ) {
-        return cs.doCascade( CascadingAction.PERSIST ) || cs.doCascade( CascadingAction.SAVE_UPDATE )
-            || cs.doCascade( CascadingAction.SAVE_UPDATE_COPY );
+        return cs.doCascade( CascadingAction.PERSIST ) || cs.doCascade( CascadingAction.SAVE_UPDATE );
     }
 
 }

@@ -19,8 +19,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.FlushMode;
 import org.hibernate.Query;
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.classic.Session;
 import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Restrictions;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -325,7 +325,6 @@ public class AclDaoImpl implements AclDao {
                 log.trace( "       Updating ACL on parent: " + acl.getParentAcl().getObjectIdentity() );
 
             update( ( MutableAcl ) acl.getParentAcl() );
-            this.getSessionFactory().getCurrentSession().evict( acl.getParentAcl() );
             aclObjectIdentity.setParentObject( convert( ( MutableAcl ) acl.getParentAcl() ) );
             assert aclObjectIdentity.getParentObject() != null;
         } else {

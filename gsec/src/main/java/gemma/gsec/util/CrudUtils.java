@@ -14,7 +14,7 @@
  */
 package gemma.gsec.util;
 
-import org.hibernate.engine.CascadeStyle;
+import org.hibernate.engine.spi.CascadeStyle;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.entity.EntityPersister;
 
