@@ -21,6 +21,8 @@ import org.hibernate.FlushMode;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.criterion.Criterion;
+import org.hibernate.criterion.Restrictions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.acls.domain.AclAuthorizationStrategy;
 import org.springframework.security.acls.model.AclCache;
@@ -32,6 +34,7 @@ import org.springframework.util.StringUtils;
 import javax.persistence.EntityNotFoundException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * We have our own implementation of the AclDao in part because of deadlock problems caused by the default JDBC-based
@@ -55,11 +58,6 @@ public class AclDaoImpl implements AclDao {
 
     @Autowired
     private AclCache aclCache;
-
-    /*
-     * Used for fetching ACLs. 50 is the value used by the default spring implementation.
-     */
-    private final int batchSize = 100;
 
     @Autowired
     private SessionFactory sessionFactory;
@@ -251,51 +249,36 @@ public class AclDaoImpl implements AclDao {
     @Override
     public Map<ObjectIdentity, Acl> readAclsById( List<ObjectIdentity> objects, List<Sid> sids ) {
 
-        Assert.isTrue( batchSize >= 1, "BatchSize must be >= 1" );
         Assert.notEmpty( objects, "Objects to lookup required" );
 
         Map<ObjectIdentity, Acl> result = new HashMap<>();
 
-        Set<ObjectIdentity> currentBatchToLoad = new HashSet<>();
+        Set<ObjectIdentity> missingObjectIdentities = new HashSet<>();
 
-        for ( int i = 0; i < objects.size(); i++ ) {
-            final ObjectIdentity oid = objects.get( i );
-            boolean aclFound = result.containsKey( oid );
-
+        for ( ObjectIdentity oid : objects ) {
             // Check we don't already have this ACL in the results
-
+            if ( result.containsKey( oid ) ) {
+                continue;
+            }
             // Check cache for the present ACL entry
-            if ( !aclFound ) {
-                Acl acl = aclCache.getFromCache( oid );
-                // Ensure any cached element supports all the requested SIDs
-                // (they should always, as our base impl doesn't filter on SID)
-                if ( acl != null ) {
-                    result.put( acl.getObjectIdentity(), acl );
-                    aclFound = true;
-
-                }
+            Acl acl = aclCache.getFromCache( oid );
+            // Ensure any cached element supports all the requested SIDs
+            // (they should always, as our base impl doesn't filter on SID)
+            if ( acl != null ) {
+                result.put( acl.getObjectIdentity(), acl );
+            } else {
+                missingObjectIdentities.add( oid );
             }
+        }
 
-            if ( !aclFound ) {
-                currentBatchToLoad.add( oid );
-            }
-
-            if ( ( currentBatchToLoad.size() == this.batchSize ) || ( ( i + 1 ) == objects.size() ) ) {
-                if ( currentBatchToLoad.size() > 0 ) {
-                    Map<ObjectIdentity, Acl> loadedBatch = loadAcls( currentBatchToLoad );
-
-                    // Add loaded batch (all elements 100% initialized) to results
-                    result.putAll( loadedBatch );
-
-                    assert result.size() >= loadedBatch.size();
-
-                    // Add the loaded batch to the cache
-                    for ( Acl loadedAcl : loadedBatch.values() ) {
-                        aclCache.putInCache( ( MutableAcl ) loadedAcl );
-                    }
-
-                    currentBatchToLoad.clear();
-                }
+        // load any missing ACLs from the database
+        if ( !missingObjectIdentities.isEmpty() ) {
+            Map<ObjectIdentity, Acl> loadedBatch = loadAcls( missingObjectIdentities );
+            // Add loaded batch (all elements 100% initialized) to results
+            result.putAll( loadedBatch );
+            // Add the loaded batch to the cache
+            for ( Acl loadedAcl : loadedBatch.values() ) {
+                aclCache.putInCache( ( MutableAcl ) loadedAcl );
             }
         }
 
@@ -449,68 +432,35 @@ public class AclDaoImpl implements AclDao {
      * @param objectIdentities a batch of OIs to fetch ACLs for.
      */
     private Map<ObjectIdentity, Acl> loadAcls( final Collection<ObjectIdentity> objectIdentities ) {
+        if ( objectIdentities.isEmpty() )
+            return Collections.emptyMap();
+
+        // create one clause by type so that we can efficiently match using a in(...) clause
+        Map<String, List<ObjectIdentity>> objectIdentitiesByType = objectIdentities.stream()
+            .collect( Collectors.groupingBy( ObjectIdentity::getType, Collectors.toList() ) );
+        Criterion clauses = null;
+        for ( Map.Entry<String, List<ObjectIdentity>> entry : objectIdentitiesByType.entrySet() ) {
+            List<Serializable> ids = entry.getValue().stream()
+                .map( ObjectIdentity::getIdentifier )
+                .collect( Collectors.toList() );
+            Criterion clause = Restrictions.and(
+                Restrictions.eq( "type", entry.getKey() ),
+                Restrictions.in( "identifier", ids ) );
+            if ( clauses != null ) {
+                clauses = Restrictions.or( clauses, clause );
+            } else {
+                clauses = clause;
+            }
+        }
+
+        //noinspection unchecked
+        List<AclObjectIdentity> queryR = getSessionFactory().getCurrentSession()
+            .createCriteria( AclObjectIdentity.class )
+            .list();
 
         final Map<Serializable, Acl> results = new HashMap<>();
-
-        Set<String> types = new HashSet<>();
-        Set<Serializable> ids = new HashSet<>();
-        for ( ObjectIdentity oi : objectIdentities ) {
-            types.add( oi.getType() );
-            ids.add( oi.getIdentifier() );
-        }
-
-        // possibly has no entries yet, so left outer join?
-        Session session = this.getSessionFactory().getCurrentSession();
-        StringBuilder buf = new StringBuilder( "select o from AclObjectIdentity o left outer join o.entries e  where " );
-
-        Query query = null;
-        if ( types.size() == 1 ) {
-            /*
-             * if there is just one type, we can pull that out of the or clause and make it an 'in'
-             */
-            buf.append( " o.type=:type and o.identifier in (:ids) order by o.identifier asc, e.aceOrder asc" );
-            query = session.createQuery( buf.toString() ).setReadOnly( true );
-            query.setParameter( "type", types.iterator().next() );
-            query.setParameterList( "ids", ids );
-        } else {
-            log.debug( "Querying for more than one OI type" );
-            int numClauses = 0;
-            for ( int i = 1; i <= objectIdentities.size(); i++ ) {
-                buf.append( " (o.identifier=? and o.type=?)" );
-                if ( i < objectIdentities.size() ) {
-                    buf.append( " or" );
-                }
-                numClauses++;
-            }
-
-            assert numClauses == objectIdentities.size();
-
-            /*
-             * We do not add a clause for the sids! That would require a more complex caching scheme.
-             */
-            buf.append( " order by o.identifier asc, e.aceOrder asc" );
-
-            query = session.createQuery( buf.toString() ).setReadOnly( true );
-            int i = 0; // 1 is for jdbc...so we have to subtract 1 than used in BasicLookupStrategy
-            for ( ObjectIdentity oi : objectIdentities ) {
-                query.setLong( ( 2 * i ), ( Long ) oi.getIdentifier() );
-                query.setString( ( 2 * i ) + 1, oi.getType() );
-                i++;
-            }
-        }
-
-        List<?> queryR = query.list();
-
-        // this is okay if we haven't added the objects yet.
-        // if ( queryR.size() < objectIdentities.size() ) {
-        // log.warn( "Expected " + objectIdentities.size() + " objectidentities from db, got " + queryR.size()
-        // + " from db" );
-        // }
-
         Set<Long> parentIdsToLookup = new HashSet<>();
-        for ( Object o : queryR ) {
-
-            AclObjectIdentity oi = ( AclObjectIdentity ) o;
+        for ( AclObjectIdentity oi : queryR ) {
 
             AclImpl parentAcl = null;
             AclObjectIdentity parentObjectIdentity = oi.getParentObject();
@@ -524,7 +474,7 @@ public class AclDaoImpl implements AclDao {
 
                     if ( cachedParent == null ) {
 
-                        parentIdsToLookup.add( new Long( parentObjectIdentity.getId() ) );
+                        parentIdsToLookup.add( parentObjectIdentity.getId() );
 
                         parentAcl = new AclImpl( parentObjectIdentity, aclAuthorizationStrategy, /* parent acl */null );
 
