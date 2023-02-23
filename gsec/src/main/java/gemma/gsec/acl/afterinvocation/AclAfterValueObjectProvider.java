@@ -75,7 +75,7 @@ public class AclAfterValueObjectProvider extends
 
             boolean hasPermission = securityService.hasPermissionVO( svo, requirePermission, authentication );
 
-            if ( !hasPermission ) return false;
+            if ( !hasPermission ) return null;
 
             if ( SecurityUtil.isUserLoggedIn() ) {
                 Acl acl = securityService.getAcl( svo );
