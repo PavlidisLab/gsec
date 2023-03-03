@@ -8,7 +8,7 @@
     </parent>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
-    <version>0.0.11-SNAPSHOT</version>
+    <version>0.0.11</version>
     <packaging>jar</packaging>
     <name>gsec</name>
     <organization>
