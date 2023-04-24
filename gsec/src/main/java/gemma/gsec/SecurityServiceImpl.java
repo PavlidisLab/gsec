@@ -628,28 +628,8 @@ public class SecurityServiceImpl implements SecurityService {
         /*
          * Take advantage of fast bulk loading of ACLs.
          */
-        Map<ObjectIdentity, Acl> acls;
-        try {
-            acls = aclService
-                .readAclsById( new Vector<>( objectIdentities.keySet() ) );
-
-        } catch ( NotFoundException e ) {
-            /*
-             * we don't know which ones were missing (this can be due to some kind of stale-cache state?), so do it the
-             * slow way
-             */
-            acls = new HashMap<>();
-            for ( T s : svos ) {
-                ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
-
-                try {
-                    acls.put( oi, aclService.readAclById( oi ) );
-                } catch ( NotFoundException e1 ) {
-                    log.warn( e1.getMessage() );
-                    acls.put( oi, null );
-                }
-            }
-        }
+        Map<ObjectIdentity, Acl> acls = aclService
+            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
 
         assert !acls.isEmpty();
 

@@ -126,21 +126,17 @@ public class AclServiceImpl implements AclService {
     }
 
     private Map<ObjectIdentity, Acl> doReadAcls( final List<ObjectIdentity> objects, final List<Sid> sids ) throws NotFoundException {
-        Map<ObjectIdentity, Acl> result = aclDao.readAclsById( objects, sids );
-
-        // Check every requested object identity was found (throw NotFoundException if needed)
-        for ( ObjectIdentity key : objects ) {
-            if ( !result.containsKey( key ) ) {
-                log.debug( "ACL result size " + result.keySet().size() );
-                if ( result.keySet().size() > 0 ) {
-                    log.debug( "ACL result first key " + result.keySet().iterator().next() );
-                }
-                throw new NotFoundException( "Unable to find ACL information for object identity '" + key + "'" );
-            }
-
-            assert result.get( key ) != null;
+        if ( objects.isEmpty() ) {
+            return Collections.emptyMap();
         }
-
+        Map<ObjectIdentity, Acl> result = aclDao.readAclsById( objects, sids );
+        if ( result.isEmpty() ) {
+            if ( objects.size() == 1 ) {
+                throw new NotFoundException( String.format( "Unable to find ACL information for %s.", objects.iterator().next() ) );
+            } else {
+                throw new NotFoundException( "Unable to find ACL information for any of the supplied object identities." );
+            }
+        }
         return result;
     }
 }
