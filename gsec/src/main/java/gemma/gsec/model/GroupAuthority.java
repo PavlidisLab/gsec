@@ -19,25 +19,16 @@
 
 package gemma.gsec.model;
 
+import org.springframework.security.core.GrantedAuthority;
+
 import java.io.Serializable;
 
 /**
- * TODO Document Me
+ * Represents an {@link org.springframework.security.core.GrantedAuthority} conferred by a group membership.
  *
  * @author ptan
  * @version $Id$
  */
-public interface GroupAuthority extends Serializable {
-
-    String getAuthority();
-
-    /**
-     *
-     */
-    Long getId();
-
-    void setAuthority( String authority );
-
-    void setId( Long id );
+public interface GroupAuthority extends GrantedAuthority, Serializable {
 
 }

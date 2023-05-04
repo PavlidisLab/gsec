@@ -18,16 +18,14 @@
  */
 package gemma.gsec.authentication;
 
-import java.io.IOException;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.MessageSource;
+import org.springframework.context.MessageSourceAware;
 import org.springframework.security.authentication.AnonymousAuthenticationProvider;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
@@ -36,7 +34,8 @@ import org.springframework.security.authentication.event.InteractiveAuthenticati
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
+
+import java.io.IOException;
 
 /**
  * Process authentication requests that come from outside a web context. This is used for command line interfaces, for
@@ -45,19 +44,18 @@ import org.springframework.stereotype.Service;
  * @author keshav
  * @version $Id: ManualAuthenticationServiceImpl.java,v 1.5 2013/09/22 18:50:42 paul Exp $
  */
-@Service("manualAuthenticationService")
 public class ManualAuthenticationServiceImpl implements ApplicationContextAware, InitializingBean,
-    ManualAuthenticationService {
+    ManualAuthenticationService, MessageSourceAware {
     private static final Log log = LogFactory.getLog( ManualAuthenticationServiceImpl.class.getName() );
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
 
-    @Autowired
     private ApplicationContext context;
-
-    @Autowired
     private MessageSource messageSource;
+
+    public ManualAuthenticationServiceImpl( AuthenticationManager authenticationManager ) {
+        this.authenticationManager = authenticationManager;
+    }
 
     /**
      * We need to do this because normally the anonymous provider has
@@ -114,7 +112,11 @@ public class ManualAuthenticationServiceImpl implements ApplicationContextAware,
     @Override
     public void setApplicationContext( ApplicationContext applicationContext ) throws BeansException {
         this.context = applicationContext;
+    }
 
+    @Override
+    public void setMessageSource( MessageSource messageSource ) {
+        this.messageSource = messageSource;
     }
 
     /*
@@ -172,5 +174,4 @@ public class ManualAuthenticationServiceImpl implements ApplicationContextAware,
         log.debug( "Authentication request failed: " + failed.toString() );
 
     }
-
 }

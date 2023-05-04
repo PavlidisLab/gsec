@@ -19,53 +19,28 @@
 
 package gemma.gsec.model;
 
+import java.io.Serializable;
+import java.util.Date;
+
 /**
  * TODO Document Me
  *
  * @author ptan
  * @version $Id$
  */
-public interface User extends Describable, Person, SecuredNotChild {
+public interface User extends Securable, SecuredNotChild, Serializable {
 
-    /**
-     *
-     */
     Boolean getEnabled();
 
-    /**
-     *
-     */
     String getPassword();
 
-    /**
-     *
-     */
     String getPasswordHint();
 
-    /**
-     *
-     */
     String getSignupToken();
 
-    /**
-     *
-     */
-    java.util.Date getSignupTokenDatestamp();
+    Date getSignupTokenDatestamp();
 
-    /**
-     *
-     */
     String getUserName();
 
-    void setEnabled( Boolean enabled );
-
-    void setPassword( String password );
-
-    void setPasswordHint( String passwordHint );
-
-    void setSignupToken( String signupToken );
-
-    void setSignupTokenDatestamp( java.util.Date signupTokenDatestamp );
-
-    void setUserName( String userName );
+    String getEmail();
 }

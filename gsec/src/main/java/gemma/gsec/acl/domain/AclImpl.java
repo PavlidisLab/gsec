@@ -14,21 +14,13 @@
  */
 package gemma.gsec.acl.domain;
 
+import org.springframework.security.acls.domain.AclAuthorizationStrategy;
+import org.springframework.security.acls.model.*;
+import org.springframework.util.Assert;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.springframework.security.acls.domain.AclAuthorizationStrategy;
-import org.springframework.security.acls.model.AccessControlEntry;
-import org.springframework.security.acls.model.Acl;
-import org.springframework.security.acls.model.NotFoundException;
-import org.springframework.security.acls.model.ObjectIdentity;
-import org.springframework.security.acls.model.OwnershipAcl;
-import org.springframework.security.acls.model.Permission;
-import org.springframework.security.acls.model.Sid;
-import org.springframework.security.acls.model.UnloadedSidException;
-import org.springframework.util.Assert;
 
 /**
  * Represents an access control list (ACL) for a domain object. Based on spring-security AclImpl.
@@ -38,28 +30,22 @@ import org.springframework.util.Assert;
  */
 public class AclImpl implements OwnershipAcl {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -953242274878593548L;
-    private transient AclAuthorizationStrategy aclAuthorizationStrategy;
-    private List<AclEntry> entries;
-    private AclObjectIdentity objectIdentity;
-    private AclImpl parentAcl;
+
+    private final transient AclAuthorizationStrategy aclAuthorizationStrategy;
+    private final List<AclEntry> entries;
+    private final AclObjectIdentity objectIdentity;
+    private Acl parentAcl;
 
     /**
      * Full constructor
      *
-     * @param objectIdentity the object identity this ACL relates to (required)
-     * @param id the primary key assigned to this ACL (required)
+     * @param objectIdentity           the object identity this ACL relates to (required)
      * @param aclAuthorizationStrategy authorization strategy (required)
-     * @param parentAcl the parent (may be <code>null</code>)
-     * @param loadedSids the loaded SIDs if only a subset were loaded (may be <code>null</code>)
-     * @param entriesInheriting if ACEs from the parent should inherit into this ACL
-     * @param owner the owner (required)
+     * @param parentAcl                the parent (may be <code>null</code>)
      */
     public AclImpl( AclObjectIdentity objectIdentity, AclAuthorizationStrategy aclAuthorizationStrategy,
-        AclImpl parentAcl ) {
+        Acl parentAcl ) {
         Assert.notNull( objectIdentity, "Object Identity required" );
         Assert.notNull( aclAuthorizationStrategy, "AclAuthorizationStrategy required" );
         Assert.notNull( objectIdentity.getOwnerSid(), "Owner required" );
@@ -67,13 +53,6 @@ public class AclImpl implements OwnershipAcl {
         this.entries = new ArrayList<>( objectIdentity.getEntries() );
         this.aclAuthorizationStrategy = aclAuthorizationStrategy;
         this.parentAcl = parentAcl; // may be null
-    }
-
-    /**
-     * Private no-argument constructor for use by reflection-based persistence tools along with field-level access.
-     */
-    @SuppressWarnings("unused")
-    private AclImpl() {
     }
 
     @Override
@@ -86,11 +65,6 @@ public class AclImpl implements OwnershipAcl {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals( Object obj ) {
         if ( obj == null ) return false;
@@ -98,7 +72,6 @@ public class AclImpl implements OwnershipAcl {
         if ( !( obj instanceof AclImpl ) ) return false;
 
         AclImpl rhs = ( AclImpl ) obj;
-        assert rhs != null;
 
         if ( ( this.getId() == null && rhs.getId() == null ) || ( this.getId().equals( rhs.getId() ) ) ) {
             if ( ( this.getOwner() == null && rhs.getOwner() == null ) || this.getOwner().equals( rhs.getOwner() ) ) {
@@ -129,20 +102,12 @@ public class AclImpl implements OwnershipAcl {
 
     @Override
     public List<AccessControlEntry> getEntries() {
-
         // populate the ace_order.
         int i = 0;
-        try {
-            for ( AclEntry e : entries ) {
-                FieldUtils.writeField( e, "aceOrder", i, true );
-                // e.setAceOrder( i );
-                i++;
-            }
-        } catch ( IllegalAccessException e ) {
-
+        for ( AclEntry e : entries ) {
+            e.setAceOrder( i++ );
         }
-
-        return new ArrayList<AccessControlEntry>( entries );
+        return new ArrayList<>( entries );
     }
 
     @Override
@@ -150,16 +115,8 @@ public class AclImpl implements OwnershipAcl {
         return this.objectIdentity.getId();
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.acls.model.Acl#getObjectIdentity()
-     */
     @Override
     public ObjectIdentity getObjectIdentity() {
-        // synch back up.
-        // objectIdentity.getEntries().clear();
-        // objectIdentity.getEntries().addAll( ( Collection<? extends AclEntry> ) getEntries() );
         return objectIdentity;
     }
 
@@ -169,7 +126,7 @@ public class AclImpl implements OwnershipAcl {
     }
 
     @Override
-    public AclImpl getParentAcl() {
+    public Acl getParentAcl() {
         return parentAcl;
     }
 
@@ -201,7 +158,7 @@ public class AclImpl implements OwnershipAcl {
 
         AclEntry ace = new AclEntry( null, this, sid, permission, granting );
 
-        int osize = entries.size();
+        int osize = this.entries.size();
         synchronized ( entries ) {
             this.entries.add( atIndexLocation, ace );
         }
@@ -231,17 +188,16 @@ public class AclImpl implements OwnershipAcl {
      * thrown and the caller will need to decide how to handle the permission check. Similarly, if any of the SID
      * arguments presented to the method were not loaded by the ACL, <code>UnloadedSidException</code> will be thrown.
      *
-     * @param permission the exact permissions to scan for (order is important)
-     * @param sids the exact SIDs to scan for (order is important)
+     * @param permission         the exact permissions to scan for (order is important)
+     * @param sids               the exact SIDs to scan for (order is important)
      * @param administrativeMode if <code>true</code> denotes the query is for administrative purposes and no auditing
-     *        will be undertaken
+     *                           will be undertaken
      * @return <code>true</code> if one of the permissions has been granted, <code>false</code> if one of the
-     *         permissions has been specifically revoked
+     * permissions has been specifically revoked
      * @return false if an exact ACE for one of the permission bit masks and SID combination could not be
-     *         found
+     * found
      * @throws UnloadedSidException if the passed SIDs are unknown to this ACL because the ACL was only loaded for a
-     *         subset of SIDs
-     * @author Based on code from spring-security.
+     *                              subset of SIDs
      */
     @Override
     public boolean isGranted( List<Permission> permission, List<Sid> sids, boolean administrativeMode )
@@ -403,11 +359,7 @@ public class AclImpl implements OwnershipAcl {
 
         synchronized ( entries ) {
             AclEntry ace = entries.get( aceIndex );
-            try {
-                FieldUtils.writeField( ace, "permission", permission );
-            } catch ( IllegalAccessException e ) {
-                e.printStackTrace();
-            }
+            ace.setPermission( permission );
         }
     }
 

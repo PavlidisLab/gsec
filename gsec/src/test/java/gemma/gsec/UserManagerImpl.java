@@ -6,12 +6,10 @@ import gemma.gsec.model.UserGroup;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
 
-@Component
 public class UserManagerImpl implements UserManager {
 
     @Override

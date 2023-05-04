@@ -18,12 +18,6 @@
  */
 package gemma.gsec.acl.domain;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.security.acls.domain.AccessControlEntryImpl;
 import org.springframework.security.acls.domain.DefaultPermissionFactory;
 import org.springframework.security.acls.domain.PermissionFactory;
@@ -32,6 +26,10 @@ import org.springframework.security.acls.model.Acl;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.acls.model.Sid;
 import org.springframework.util.Assert;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Models the acl entry
@@ -48,62 +46,98 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
     private static final long serialVersionUID = -4697361841061166973L;
 
     /**
-     * @param entries
      * @param acl to be associated with the AccessControlEntries
-     * @return
      */
-    final public static List<AccessControlEntry> convert( List<AclEntry> entries, Acl acl ) {
+    public static List<AccessControlEntry> convert( List<AclEntry> entries, Acl acl ) {
         List<AccessControlEntry> result = new ArrayList<>();
-        Collections.sort( entries ); // might be able to avoid...
         for ( AclEntry e : entries ) {
-            result.add( e.convert( acl ) );
+            result.add( new AccessControlEntryImpl( e.id, acl, e.sid, permissionFactory.buildFromMask( e.mask ),
+                e.granting, false, false ) );
         }
         return result;
     }
 
-    final private Integer aceOrder = null;
+    private Long id;
 
-    final private Acl acl = null;
+    private Sid sid;
 
-    final private Boolean granting = null;
+    private boolean granting;
 
-    final private Long id = null;
+    private int mask;
 
-    final private Integer mask = null;
+    private Acl acl;
 
-    final private Sid sid = null;
+    private int aceOrder;
 
+    @SuppressWarnings("unused")
     public AclEntry() {
+
     }
 
-    public AclEntry( Serializable id, Acl acl, Sid sid, Permission permission, boolean granting ) {
+    public AclEntry( Long o, Acl acl, Sid sid, Permission permission, boolean granting ) {
         Assert.notNull( acl, "Acl required" );
         Assert.notNull( sid, "Sid required" );
         Assert.notNull( permission, "Permission required" );
-        try {
-            FieldUtils.writeField( this, "id", id, true );
-            FieldUtils.writeField( this, "acl", acl, true );
-            FieldUtils.writeField( this, "sid", sid, true );
-            FieldUtils.writeField( this, "mask", permission.getMask(), true );
-            FieldUtils.writeField( this, "granting", granting, true );
-        } catch ( IllegalAccessException e ) {
-            e.printStackTrace();
-        }
+        this.id = o;
+        this.acl = acl;
+        this.sid = sid;
+        this.mask = permission.getMask();
+        this.granting = granting;
+    }
 
+
+    @Override
+    public Long getId() {
+        return this.id;
     }
 
     @Override
-    final public int compareTo( AclEntry o ) {
-        return this.getAceOrder().compareTo( o.getAceOrder() );
+    public Permission getPermission() {
+        return permissionFactory.buildFromMask( mask );
+    }
+
+    public void setPermission( Permission permission ) {
+        this.mask = permission.getMask();
+    }
+
+    @Override
+    public Sid getSid() {
+        return this.sid;
+    }
+
+    public void setSid( Sid sid ) {
+        this.sid = sid;
+    }
+
+    @Override
+    public boolean isGranting() {
+        return this.granting;
+    }
+
+    @Override
+    public Acl getAcl() {
+        return this.acl;
+    }
+
+    public int getAceOrder() {
+        return aceOrder;
+    }
+
+    public void setAceOrder( int aceOrder ) {
+        this.aceOrder = aceOrder;
+    }
+
+    @Override
+    public int compareTo( AclEntry other ) {
+        return aceOrder - other.aceOrder;
     }
 
     /**
-     * @param acl
-     * @return
+     * Note that this does not use the ID, to avoid getting duplicate entries.
      */
-    final public AccessControlEntry convert( Acl a ) {
-        return new AccessControlEntryImpl( this.id, a, this.sid, permissionFactory.buildFromMask( this.mask ),
-            this.granting, false, false );
+    @Override
+    final public int hashCode() {
+        return Objects.hash( granting, mask, sid );
     }
 
     /*
@@ -121,99 +155,22 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
         if ( getClass() != obj.getClass() ) return false;
         AclEntry other = ( AclEntry ) obj;
 
-        if ( granting == null ) {
-            if ( other.granting != null ) return false;
-        } else if ( !granting.equals( other.granting ) ) return false;
+        if ( granting != other.granting ) {
+            return false;
+        }
 
-        if ( mask == null ) {
-            if ( other.mask != null ) return false;
-        } else if ( !mask.equals( other.mask ) ) return false;
+        if ( mask != other.mask ) {
+            return false;
+        }
+
         if ( sid == null ) {
             return other.sid == null;
         } else return sid.equals( other.sid );
     }
 
-    /**
-     *
-     */
-    public Integer getAceOrder() {
-        return this.aceOrder;
-    }
-
-    @Override
-    public Acl getAcl() {
-        return this.acl;
-    }
-
-    /**
-     *
-     */
-    public java.lang.Boolean getGranting() {
-        return this.granting;
-    }
-
-    /**
-     *
-     */
-    @Override
-    public Long getId() {
-        return this.id;
-    }
-
-    /**
-     *
-     */
-    public Integer getMask() {
-        return this.mask;
-    }
-
-    @Override
-    public Permission getPermission() {
-        return permissionFactory.buildFromMask( mask );
-    }
-
-    /**
-     *
-     */
-    @Override
-    public Sid getSid() {
-        return this.sid;
-    }
-
-    /*
-     * Note that this does not use the ID, to avoid getting duplicate entries.
-     *
-     * (non-Javadoc)
-     *
-     * @see java.lang.Object#hashCode()
-     */
-    @Override
-    final public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ( ( granting == null ) ? 0 : granting.hashCode() );
-        result = prime * result + ( ( mask == null ) ? 0 : mask.hashCode() );
-        result = prime * result + ( ( sid == null ) ? 0 : sid.hashCode() );
-        return result;
-    }
-
-    @Override
-    public boolean isGranting() {
-        if ( this.granting == null ) return false;
-        return this.granting.booleanValue();
-    }
-
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append( "AclEntry[" );
-        sb.append( "id: " ).append( this.id ).append( "; " );
-        sb.append( "granting: " ).append( this.granting ).append( "; " );
-        sb.append( "sid: " ).append( this.sid ).append( "; " );
-        sb.append( "permission: " ).append( permissionFactory.buildFromMask( mask ) ).append( "; " );
-        sb.append( "]" );
-
-        return sb.toString();
+        return String.format( "AclEntry[id: %d; granting: %s; sid: %s; permission: %s; ]",
+            this.id, this.granting, this.sid, permissionFactory.buildFromMask( mask ) );
     }
-
 }

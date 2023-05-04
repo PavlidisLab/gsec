@@ -14,14 +14,13 @@
  */
 package gemma.gsec.acl.domain;
 
-import java.io.Serializable;
-import java.util.List;
-
-import org.hibernate.SessionFactory;
 import org.springframework.security.acls.jdbc.LookupStrategy;
 import org.springframework.security.acls.model.MutableAcl;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Sid;
+
+import java.io.Serializable;
+import java.util.List;
 
 /**
  * @author Paul
@@ -42,8 +41,6 @@ public interface AclDao extends LookupStrategy {
     List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity );
 
     AclSid findOrCreate( Sid sid );
-
-    void setSessionFactory( SessionFactory sessionFactory );
 
     void update( MutableAcl acl );
 

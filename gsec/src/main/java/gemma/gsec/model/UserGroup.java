@@ -22,25 +22,25 @@ package gemma.gsec.model;
 import java.util.Collection;
 
 /**
- * TODO Document Me
+ * Represents a group of users whom are conferred a set of {@link org.springframework.security.core.GrantedAuthority}.
  *
  * @author ptan
  * @version $Id$
  */
-public interface UserGroup extends Describable, SecuredNotChild {
+public interface UserGroup extends SecuredNotChild {
 
     /**
-     *
+     * A unique name to identify the group.
+     */
+    String getName();
+
+    /**
+     * A set of authorities conferred by the group membership.
      */
     <T extends GroupAuthority> Collection<T> getAuthorities();
 
     /**
-     *
+     * A set of users that belong to the group.
      */
     <T extends User> Collection<T> getGroupMembers();
-
-    <T extends GroupAuthority> void setAuthorities( Collection<T> authorities );
-
-    <T extends User> void setGroupMembers( Collection<T> groupMembers );
-
 }

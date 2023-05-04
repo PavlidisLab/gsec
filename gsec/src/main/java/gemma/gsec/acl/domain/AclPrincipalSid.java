@@ -18,15 +18,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.Assert;
 
+import java.util.Objects;
+
 /**
  * @author Paul
  * @version $Id: AclPrincipalSid.java,v 1.1 2013/09/14 16:55:18 paul Exp $
  */
 public class AclPrincipalSid extends AclSid {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -4679911678447417301L;
     private String principal;
 
@@ -49,9 +48,22 @@ public class AclPrincipalSid extends AclSid {
         this.principal = principal;
     }
 
+    public String getPrincipal() {
+        return principal;
+    }
+
+    public void setPrincipal( String principal ) {
+        this.principal = principal;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash( principal );
+    }
+
     @Override
     public boolean equals( Object object ) {
-        if ( ( object == null ) || !( object instanceof AclPrincipalSid ) ) {
+        if ( !( object instanceof AclPrincipalSid ) ) {
             return false;
         }
 
@@ -59,34 +71,6 @@ public class AclPrincipalSid extends AclSid {
 
         // Delegate to getPrincipal() to perform actual comparison (both should be identical)
         return ( ( AclPrincipalSid ) object ).getPrincipal().equals( this.getPrincipal() );
-    }
-
-    public String getPrincipal() {
-        return principal;
-    }
-
-    @Override
-    public int hashCode() {
-        return this.getPrincipal().hashCode();
-    }
-
-    /**
-     * @param authentication
-     */
-    public void setPrincipal( Authentication authentication ) {
-        if ( authentication.getPrincipal() instanceof UserDetails ) {
-            this.principal = ( ( UserDetails ) authentication.getPrincipal() ).getUsername();
-        } else {
-            this.principal = authentication.getPrincipal().toString();
-        }
-
-    }
-
-    /**
-     * @param principal
-     */
-    public void setPrincipal( String principal ) {
-        this.principal = principal;
     }
 
     @Override

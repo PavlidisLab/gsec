@@ -14,8 +14,9 @@
  */
 package gemma.gsec.util;
 
-import java.util.Collection;
-
+import gemma.gsec.AuthorityConstants;
+import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
+import gemma.gsec.acl.domain.AclPrincipalSid;
 import org.springframework.security.acls.domain.BasePermission;
 import org.springframework.security.acls.model.AccessControlEntry;
 import org.springframework.security.acls.model.Acl;
@@ -27,8 +28,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import gemma.gsec.AuthorityConstants;
-import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
+import java.util.Collection;
 
 /**
  * Database-independent methods for ACLs
@@ -42,8 +42,6 @@ public class SecurityUtil {
 
     /**
      * Returns the username of the authenticated user
-     *
-     * @return
      */
     public static String getCurrentUsername() {
         Object principal = getAuthentication().getPrincipal();
@@ -53,10 +51,14 @@ public class SecurityUtil {
         throw new UnsupportedOperationException( "Principal is of unrecognized type" );
     }
 
+    public static boolean isOwner( Acl acl, String username ) {
+        Sid owner = acl.getOwner();
+        return ( owner instanceof AclPrincipalSid && ( ( AclPrincipalSid ) owner ).getPrincipal().equals( username ) );
+    }
+
     /**
      * Test whether the given ACL is constraining access to users who are at privileges above "anonymous".
      *
-     * @param acl
      * @return true if the permissions indicate 'non-public', false if 'public'.
      */
     public static boolean isPrivate( Acl acl ) {
@@ -78,7 +80,7 @@ public class SecurityUtil {
         }
 
         /*
-         * Even if the object is not private, it's parent might be and we might inherit that. Recursion happens here.
+         * Even if the object is not private, it's parent might be, and we might inherit that. Recursion happens here.
          */
         Acl parentAcl = acl.getParentAcl();
         if ( parentAcl != null && acl.isEntriesInheriting() ) {
@@ -105,7 +107,6 @@ public class SecurityUtil {
     }
 
     /**
-     * @param acl
      * @return true if the ACL grants READ authority to at least one group that is not admin or agent.
      */
     public static boolean isShared( Acl acl ) {
@@ -129,7 +130,7 @@ public class SecurityUtil {
         }
 
         /*
-         * Even if the object is not private, its parent might be and we might inherit that. Recursion happens here.
+         * Even if the object is not private, its parent might be, and we might inherit that. Recursion happens here.
          */
         Acl parentAcl = acl.getParentAcl();
         if ( parentAcl != null && acl.isEntriesInheriting() ) {
@@ -164,7 +165,7 @@ public class SecurityUtil {
     }
 
     /**
-     * @return
+     * Returns true if the user is anonymous.
      */
     public static boolean isUserAnonymous() {
         return authenticationTrustResolver.isAnonymous( getAuthentication() )
@@ -173,8 +174,6 @@ public class SecurityUtil {
 
     /**
      * Returns true if the user is non-anonymous.
-     *
-     * @return
      */
     public static boolean isUserLoggedIn() {
         return !isUserAnonymous();

@@ -14,7 +14,6 @@
  */
 package gemma.gsec.acl.afterinvocation;
 
-import gemma.gsec.acl.ValueObjectAwareIdentityRetrievalStrategyImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -32,19 +31,17 @@ import java.util.List;
  * @author paul
  * @version $Id: AclEntryAfterInvocationQuietProvider.java,v 1.3 2013/09/14 16:56:03 paul Exp $
  */
-public class AclEntryAfterInvocationQuietProvider extends
-        org.springframework.security.acls.afterinvocation.AclEntryAfterInvocationProvider {
+public class AclEntryAfterInvocationQuietProvider extends AclEntryAfterInvocationProvider {
 
     private static final Log log = LogFactory.getLog( AclEntryAfterInvocationQuietProvider.class );
 
     public AclEntryAfterInvocationQuietProvider( AclService aclService, List<Permission> requirePermission ) {
         super( aclService, "AFTER_ACL_READ_QUIET", requirePermission );
-        this.setObjectIdentityRetrievalStrategy( new ValueObjectAwareIdentityRetrievalStrategyImpl() );
     }
 
     @Override
     public Object decide( Authentication authentication, Object object, Collection<ConfigAttribute> config,
-            Object returnedObject ) throws AccessDeniedException {
+        Object returnedObject ) throws AccessDeniedException {
         try {
             return super.decide( authentication, object, config, returnedObject );
         } catch ( AccessDeniedException e ) {

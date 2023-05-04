@@ -20,11 +20,9 @@ package gemma.gsec.acl.domain;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.acls.model.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
@@ -36,20 +34,18 @@ import java.util.Map;
  * @author paul
  * @version $Id: AclServiceImpl.java,v 1.1 2013/09/14 16:55:19 paul Exp $
  */
-@Service(value = "aclService")
-@Transactional
 public class AclServiceImpl implements AclService {
 
     private static final Log log = LogFactory.getLog( AclServiceImpl.class );
 
     private final AclDao aclDao;
 
-    @Autowired
     public AclServiceImpl( AclDao aclDao ) {
         this.aclDao = aclDao;
     }
 
     @Override
+    @Transactional
     public MutableAcl createAcl( ObjectIdentity objectIdentity ) throws AlreadyExistsException {
         // Check this object identity hasn't already been persisted
         if ( aclDao.find( objectIdentity ) != null ) {
@@ -79,11 +75,13 @@ public class AclServiceImpl implements AclService {
     }
 
     @Override
+    @Transactional
     public void deleteAcl( ObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException {
         aclDao.delete( aclDao.find( objectIdentity ), deleteChildren );
     }
 
     @Override
+    @Transactional
     public void deleteSid( Sid sid ) {
         aclDao.delete( sid );
     }
@@ -119,6 +117,7 @@ public class AclServiceImpl implements AclService {
     }
 
     @Override
+    @Transactional
     public MutableAcl updateAcl( final MutableAcl acl ) throws NotFoundException {
         Assert.notNull( acl.getId(), "Object Identity doesn't provide an identifier" );
         aclDao.update( acl );

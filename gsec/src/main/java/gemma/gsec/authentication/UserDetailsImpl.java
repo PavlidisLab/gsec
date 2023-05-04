@@ -18,14 +18,13 @@
  */
 package gemma.gsec.authentication;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashSet;
-
+import gemma.gsec.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import gemma.gsec.model.User;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
 
 /**
  * Implementation for Spring Security.

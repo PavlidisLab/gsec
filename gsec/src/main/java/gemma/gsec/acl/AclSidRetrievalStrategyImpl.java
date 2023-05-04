@@ -14,11 +14,8 @@
  */
 package gemma.gsec.acl;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
-import org.springframework.security.access.hierarchicalroles.NullRoleHierarchy;
+import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
+import gemma.gsec.acl.domain.AclPrincipalSid;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.acls.model.Sid;
 import org.springframework.security.acls.model.SidRetrievalStrategy;
@@ -26,22 +23,20 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.util.Assert;
 
-import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
-import gemma.gsec.acl.domain.AclPrincipalSid;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Customized to use our AclSid implementation.
  *
  * @author Paul
  * @version $Id: AclSidRetrievalStrategyImpl.java,v 1.1 2013/09/14 16:56:00 paul Exp $
- * @see {@link org.springframework.security.acls.domain.SidRetrievalStrategyImpl}
+ * @see org.springframework.security.acls.domain.SidRetrievalStrategyImpl
  */
 public class AclSidRetrievalStrategyImpl implements SidRetrievalStrategy {
 
-    private RoleHierarchy roleHierarchy = new NullRoleHierarchy();
-
-    public AclSidRetrievalStrategyImpl() {
-    }
+    private final RoleHierarchy roleHierarchy;
 
     public AclSidRetrievalStrategyImpl( RoleHierarchy roleHierarchy ) {
         Assert.notNull( roleHierarchy, "RoleHierarchy must not be null" );

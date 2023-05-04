@@ -14,18 +14,18 @@
  */
 package gemma.gsec.acl.domain;
 
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.FlushMode;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.hibernate.criterion.Criterion;
+import org.hibernate.criterion.Order;
+import org.hibernate.criterion.Restrictions;
+import org.hibernate.sql.JoinType;
 import org.springframework.security.acls.domain.AclAuthorizationStrategy;
-import org.springframework.security.acls.model.AclCache;
 import org.springframework.security.acls.model.*;
-import org.springframework.stereotype.Repository;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -36,8 +36,7 @@ import java.util.*;
 /**
  * We have our own implementation of the AclDao in part because of deadlock problems caused by the default JDBC-based
  * spring security DAO. As documented here:
- * <p>
- * {@link http://www.ericsimmerman.com/2012/06/resolving-spring-security-acl-deadlock.html}:
+ * <a href="http://www.ericsimmerman.com/2012/06/resolving-spring-security-acl-deadlock.html">...</a>:
  * </p>
  * <blockquote> The default JDBCTemplate based implementation of Spring Security ACLs removes and recreates the entire
  * ACL for each update. That requires both deletes and inserts into the same table within the same JPA transaction and
@@ -45,48 +44,30 @@ import java.util.*;
  *
  * @author Paul
  */
-@Repository(value = "aclDao")
 public class AclDaoImpl implements AclDao {
 
     private static final Log log = LogFactory.getLog( AclDaoImpl.class );
 
-    @Autowired
-    private AclAuthorizationStrategy aclAuthorizationStrategy;
+    private final SessionFactory sessionFactory;
+    private final AclAuthorizationStrategy aclAuthorizationStrategy;
+    private final AclCache aclCache;
 
-    @Autowired
-    private AclCache aclCache;
+    public AclDaoImpl( SessionFactory sessionFactory, AclAuthorizationStrategy aclAuthorizationStrategy, AclCache aclCache ) {
+        this.sessionFactory = sessionFactory;
+        this.aclAuthorizationStrategy = aclAuthorizationStrategy;
+        this.aclCache = aclCache;
+    }
 
-    /*
-     * Used for fetching ACLs. 50 is the value used by the default spring implementation.
-     */
-    private final int batchSize = 100;
-
-    @Autowired
-    private SessionFactory sessionFactory;
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.model.common.auditAndSecurity.acl.AclDao#createObjectIdentity(java.lang.String,
-     * java.io.Serializable, org.springframework.security.acls.model.Sid, java.lang.Boolean)
-     */
     @Override
     public AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid,
         Boolean entitiesInheriting ) {
-        AclObjectIdentity aoi = new AclObjectIdentity( type, identifier );
+        AclObjectIdentity aoi = new AclObjectIdentity( type, ( Long ) identifier );
         aoi.setOwnerSid( sid );
         aoi.setEntriesInheriting( entitiesInheriting );
-        this.getSessionFactory().getCurrentSession().persist( aoi );
+        sessionFactory.getCurrentSession().persist( aoi );
         return aoi;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * ubic.gemma.model.common.auditAndSecurity.acl.AclDao#delete(org.springframework.security.acls.model.ObjectIdentity
-     * , boolean)
-     */
     @Override
     public void delete( ObjectIdentity objectIdentity, boolean deleteChildren ) {
         if ( deleteChildren ) {
@@ -102,15 +83,10 @@ public class AclDaoImpl implements AclDao {
         // must do this first...
         this.evictFromCache( objectIdentity );
 
-        this.getSessionFactory().getCurrentSession().delete( objectIdentity );
+        sessionFactory.getCurrentSession().delete( objectIdentity );
 
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.model.common.auditAndSecurity.acl.AclDao#delete(org.springframework.security.acls.model.Sid)
-     */
     @Override
     public void delete( Sid sid ) {
 
@@ -122,7 +98,7 @@ public class AclDaoImpl implements AclDao {
         }
 
         // delete any objectidentities owned
-        Session session = this.getSessionFactory().getCurrentSession();
+        Session session = sessionFactory.getCurrentSession();
         List<?> ownedOis = session
             .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
             .setParameter( "sid", toDelete ).list();
@@ -142,20 +118,13 @@ public class AclDaoImpl implements AclDao {
             session.delete( e );
         }
 
-        assert toDelete != null;
         session.delete( toDelete );
 
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * ubic.gemma.model.common.auditAndSecurity.acl.AclDao#find(org.springframework.security.acls.model.ObjectIdentity)
-     */
     @Override
     public AclObjectIdentity find( ObjectIdentity oid ) {
-        List<?> r = this.getSessionFactory().getCurrentSession()
+        List<?> r = sessionFactory.getCurrentSession()
             .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
             .setParameter( "t", oid.getType() ).setParameter( "i", oid.getIdentifier() ).list();
         if ( r.isEmpty() ) return null;
@@ -163,16 +132,11 @@ public class AclDaoImpl implements AclDao {
         return ( AclObjectIdentity ) r.get( 0 );
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.model.common.auditAndSecurity.acl.AclDao#find(org.springframework.security.acls.model.Sid)
-     */
     @Override
     public AclSid find( Sid sid ) {
         if ( sid instanceof AclPrincipalSid ) {
             AclPrincipalSid p = ( AclPrincipalSid ) sid;
-            List<?> r = this.getSessionFactory().getCurrentSession()
+            List<?> r = sessionFactory.getCurrentSession()
                 .createQuery( "from AclPrincipalSid where principal = :p" ).setParameter( "p", p.getPrincipal() )
                 .list();
             if ( !r.isEmpty() ) {
@@ -180,7 +144,7 @@ public class AclDaoImpl implements AclDao {
             }
         } else {
             AclGrantedAuthoritySid g = ( AclGrantedAuthoritySid ) sid;
-            List<?> r = this.getSessionFactory().getCurrentSession()
+            List<?> r = sessionFactory.getCurrentSession()
                 .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
                 .setParameter( "g", g.getGrantedAuthority() ).list();
             if ( !r.isEmpty() ) {
@@ -190,13 +154,6 @@ public class AclDaoImpl implements AclDao {
         return null;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.model.common.auditAndSecurity.acl.AclDao#findChildren(org.springframework.security.acls.model.
-     * ObjectIdentity)
-     */
-    @SuppressWarnings("unchecked")
     @Override
     public List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity ) {
 
@@ -208,20 +165,12 @@ public class AclDaoImpl implements AclDao {
             throw new EntityNotFoundException( "Failed to find: " + parentIdentity );
         }
 
-        List<?> list = this.getSessionFactory().getCurrentSession()
+        //noinspection unchecked
+        return sessionFactory.getCurrentSession()
             .createQuery( "from AclObjectIdentity o where o.parentObject = :po" )
             .setParameter( "po", parentIdentity ).list();
-
-        return ( List<ObjectIdentity> ) list;
-
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * ubic.gemma.model.common.auditAndSecurity.acl.AclDao#findOrCreate(org.springframework.security.acls.model.Sid)
-     */
     @Override
     public AclSid findOrCreate( Sid sid ) {
         AclSid fsid = this.find( sid );
@@ -229,96 +178,59 @@ public class AclDaoImpl implements AclDao {
         if ( fsid != null ) return fsid;
 
         assert sid instanceof AclSid;
-        this.getSessionFactory().getCurrentSession().persist( sid );
+        sessionFactory.getCurrentSession().persist( sid );
 
         return ( AclSid ) sid;
 
     }
 
-    public SessionFactory getSessionFactory() {
-        return sessionFactory;
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.acls.jdbc.LookupStrategy#readAclsById(java.util.List, java.util.List)
-     *
+    /**
      * Note that the objects here are not persistent - they need to be populated from the db.
-     *
+     * <p>
      * argument sids is ignored by this implementation
      */
     @Override
     public Map<ObjectIdentity, Acl> readAclsById( List<ObjectIdentity> objects, List<Sid> sids ) {
-
-        Assert.isTrue( batchSize >= 1, "BatchSize must be >= 1" );
         Assert.notEmpty( objects, "Objects to lookup required" );
 
         Map<ObjectIdentity, Acl> result = new HashMap<>();
 
-        Set<ObjectIdentity> currentBatchToLoad = new HashSet<>();
-
-        for ( int i = 0; i < objects.size(); i++ ) {
-            final ObjectIdentity oid = objects.get( i );
-            boolean aclFound = result.containsKey( oid );
+        Set<ObjectIdentity> aclsToLoad = new HashSet<>();
+        for ( ObjectIdentity oid : objects ) {
+            if ( result.containsKey( oid ) ) {
+                continue;
+            }
 
             // Check we don't already have this ACL in the results
 
             // Check cache for the present ACL entry
-            if ( !aclFound ) {
-                Acl acl = aclCache.getFromCache( oid );
-                // Ensure any cached element supports all the requested SIDs
-                // (they should always, as our base impl doesn't filter on SID)
-                if ( acl != null ) {
-                    result.put( acl.getObjectIdentity(), acl );
-                    aclFound = true;
-
-                }
+            Acl acl = aclCache.getFromCache( oid );
+            // Ensure any cached element supports all the requested SIDs
+            // (they should always, as our base impl doesn't filter on SID)
+            if ( acl != null ) {
+                result.put( acl.getObjectIdentity(), acl );
+                continue;
             }
 
-            if ( !aclFound ) {
-                currentBatchToLoad.add( oid );
-            }
+            aclsToLoad.add( oid );
+        }
 
-            if ( ( currentBatchToLoad.size() == this.batchSize ) || ( ( i + 1 ) == objects.size() ) ) {
-                if ( currentBatchToLoad.size() > 0 ) {
-                    Map<ObjectIdentity, Acl> loadedBatch = loadAcls( currentBatchToLoad );
+        if ( !aclsToLoad.isEmpty() ) {
+            Map<ObjectIdentity, Acl> loadedBatch = loadAcls( aclsToLoad );
 
-                    // Add loaded batch (all elements 100% initialized) to results
-                    result.putAll( loadedBatch );
+            // Add loaded batch (all elements 100% initialized) to results
+            result.putAll( loadedBatch );
 
-                    assert result.size() >= loadedBatch.size();
-
-                    // Add the loaded batch to the cache
-                    for ( Acl loadedAcl : loadedBatch.values() ) {
-                        aclCache.putInCache( ( MutableAcl ) loadedAcl );
-                    }
-
-                    currentBatchToLoad.clear();
-                }
+            // Add the loaded batch to the cache
+            for ( Acl loadedAcl : loadedBatch.values() ) {
+                aclCache.putInCache( ( MutableAcl ) loadedAcl );
             }
         }
 
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.model.common.auditAndSecurity.acl.AclDao#setSessionFactory(org.hibernate.SessionFactory)
-     */
-    @Override
-    public void setSessionFactory( SessionFactory sessionFactory ) {
-        this.sessionFactory = sessionFactory;
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * ubic.gemma.model.common.auditAndSecurity.acl.AclDao#update(org.springframework.security.acls.model.MutableAcl)
-     *
-     *
+    /**
      * This is an important method, and one that causes problems in the default JDBC-based service from spring-security.
      */
     @Override
@@ -328,12 +240,12 @@ public class AclDaoImpl implements AclDao {
         /*
          * This fixes problems with premature commits causing IDs to be erased on some entities.
          */
-        this.getSessionFactory().getCurrentSession().setFlushMode( FlushMode.COMMIT );
+        sessionFactory.getCurrentSession().setFlushMode( FlushMode.COMMIT );
 
         AclObjectIdentity aclObjectIdentity = convert( acl );
 
         // the ObjectIdentity might already be in the session.
-        aclObjectIdentity = ( AclObjectIdentity ) this.getSessionFactory().getCurrentSession()
+        aclObjectIdentity = ( AclObjectIdentity ) sessionFactory.getCurrentSession()
             .merge( aclObjectIdentity );
 
         if ( acl.getParentAcl() != null ) {
@@ -349,7 +261,7 @@ public class AclDaoImpl implements AclDao {
             assert aclObjectIdentity.getParentObject() == null;
         }
 
-        this.getSessionFactory().getCurrentSession().update( aclObjectIdentity );
+        sessionFactory.getCurrentSession().update( aclObjectIdentity );
 
         evictFromCache( aclObjectIdentity );
 
@@ -361,7 +273,6 @@ public class AclDaoImpl implements AclDao {
     }
 
     /**
-     * @param acl
      * @return synched-up and partly updated AclObjectIdentity
      */
     private AclObjectIdentity convert( MutableAcl acl ) {
@@ -374,18 +285,13 @@ public class AclDaoImpl implements AclDao {
         // repopulate the ID of the SIDs. May not have any if this is a secured child.
         if ( log.isTraceEnabled() && !entriesFromAcl.isEmpty() )
             log.trace( "Preparing to update " + entriesFromAcl.size() + " aces on " + acl.getObjectIdentity() );
-        try {
-            for ( AccessControlEntry ace : entriesFromAcl ) {
-                if ( log.isTraceEnabled() ) log.trace( ace );
-                AclSid sid = ( AclSid ) ace.getSid();
-                if ( sid.getId() == null ) {
-                    AclEntry aace = ( AclEntry ) ace;
-                    FieldUtils.writeField( aace, "sid", this.findOrCreate( sid ), true );
-
-                }
+        for ( AccessControlEntry ace : entriesFromAcl ) {
+            if ( log.isTraceEnabled() ) log.trace( ace );
+            AclSid sid = ( AclSid ) ace.getSid();
+            if ( sid.getId() == null ) {
+                AclEntry aace = ( AclEntry ) ace;
+                aace.setSid( this.findOrCreate( sid ) );
             }
-        } catch ( IllegalAccessException e ) {
-            e.printStackTrace();
         }
 
         // synched up with the ACL, partly
@@ -411,22 +317,15 @@ public class AclDaoImpl implements AclDao {
 
     /**
      * Does not check the cache;
-     *
-     * @param oi
-     * @return
      */
     private MutableAcl convertToAcl( AclObjectIdentity oi ) {
         if ( oi == null ) return null;
 
-        MutableAcl e = new AclImpl( oi, aclAuthorizationStrategy, ( AclImpl ) convertToAcl( oi.getParentObject() ) );
-
-        return e;
+        return new AclImpl( oi, aclAuthorizationStrategy, convertToAcl( oi.getParentObject() ) );
     }
 
     /**
      * ... including children, recursively.
-     *
-     * @param aclObjectIdentity
      */
     private void evictFromCache( ObjectIdentity aclObjectIdentity ) {
         Assert.notNull( aclObjectIdentity, "aclObjectIdentity cannot be null" );
@@ -449,57 +348,31 @@ public class AclDaoImpl implements AclDao {
      * @param objectIdentities a batch of OIs to fetch ACLs for.
      */
     private Map<ObjectIdentity, Acl> loadAcls( final Collection<ObjectIdentity> objectIdentities ) {
-
         final Map<Serializable, Acl> results = new HashMap<>();
 
-        Set<String> types = new HashSet<>();
-        Set<Serializable> ids = new HashSet<>();
+        // group by type so we can use in (...) clauses
+        Map<String, Set<Serializable>> idsByType = new HashMap<>();
         for ( ObjectIdentity oi : objectIdentities ) {
-            types.add( oi.getType() );
-            ids.add( oi.getIdentifier() );
+            idsByType.computeIfAbsent( oi.getType(), k -> new HashSet<>() )
+                .add( oi.getIdentifier() );
         }
 
-        // possibly has no entries yet, so left outer join?
-        Session session = this.getSessionFactory().getCurrentSession();
-        StringBuilder buf = new StringBuilder( "select o from AclObjectIdentity o left outer join o.entries e  where " );
-
-        Query query = null;
-        if ( types.size() == 1 ) {
-            /*
-             * if there is just one type, we can pull that out of the or clause and make it an 'in'
-             */
-            buf.append( " o.type=:type and o.identifier in (:ids) order by o.identifier asc, e.aceOrder asc" );
-            query = session.createQuery( buf.toString() ).setReadOnly( true );
-            query.setParameter( "type", types.iterator().next() );
-            query.setParameterList( "ids", ids );
-        } else {
-            log.debug( "Querying for more than one OI type" );
-            int numClauses = 0;
-            for ( int i = 1; i <= objectIdentities.size(); i++ ) {
-                buf.append( " (o.identifier=? and o.type=?)" );
-                if ( i < objectIdentities.size() ) {
-                    buf.append( " or" );
-                }
-                numClauses++;
-            }
-
-            assert numClauses == objectIdentities.size();
-
-            /*
-             * We do not add a clause for the sids! That would require a more complex caching scheme.
-             */
-            buf.append( " order by o.identifier asc, e.aceOrder asc" );
-
-            query = session.createQuery( buf.toString() ).setReadOnly( true );
-            int i = 0; // 1 is for jdbc...so we have to subtract 1 than used in BasicLookupStrategy
-            for ( ObjectIdentity oi : objectIdentities ) {
-                query.setLong( ( 2 * i ), ( Long ) oi.getIdentifier() );
-                query.setString( ( 2 * i ) + 1, oi.getType() );
-                i++;
-            }
+        Criterion[] clauses = new Criterion[idsByType.size()];
+        int i = 0;
+        for ( Map.Entry<String, Set<Serializable>> e : idsByType.entrySet() ) {
+            clauses[i] = Restrictions.and(
+                Restrictions.eq( "type", e.getKey() ),
+                Restrictions.in( "identifier", e.getValue() ) );
         }
 
-        List<?> queryR = query.list();
+        //noinspection unchecked
+        List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession().createCriteria( AclObjectIdentity.class )
+            // possibly has no entries yet, so left outer join?
+            .createAlias( "entries", "e", JoinType.LEFT_OUTER_JOIN )
+            .add( Restrictions.or( clauses ) )
+            .addOrder( Order.asc( "identifier" ) )
+            .addOrder( Order.asc( "e.aceOrder" ) )
+            .list();
 
         // this is okay if we haven't added the objects yet.
         // if ( queryR.size() < objectIdentities.size() ) {
@@ -508,9 +381,7 @@ public class AclDaoImpl implements AclDao {
         // }
 
         Set<Long> parentIdsToLookup = new HashSet<>();
-        for ( Object o : queryR ) {
-
-            AclObjectIdentity oi = ( AclObjectIdentity ) o;
+        for ( AclObjectIdentity oi : queryR ) {
 
             AclImpl parentAcl = null;
             AclObjectIdentity parentObjectIdentity = oi.getParentObject();
@@ -524,7 +395,7 @@ public class AclDaoImpl implements AclDao {
 
                     if ( cachedParent == null ) {
 
-                        parentIdsToLookup.add( new Long( parentObjectIdentity.getId() ) );
+                        parentIdsToLookup.add( parentObjectIdentity.getId() );
 
                         parentAcl = new AclImpl( parentObjectIdentity, aclAuthorizationStrategy, /* parent acl */null );
 
@@ -567,15 +438,15 @@ public class AclDaoImpl implements AclDao {
     /**
      * Load ACLs when we know the primary key of the objectIdentity. Recursively fill in the parentAcls.
      *
-     * @param acls the starting set of acls.
+     * @param acls              the starting set of acls.
      * @param objectIdentityIds primary keys of the object identities to be fetched. If these yield acls that are the
-     *        parents of the given acls, they will be populated.
+     *                          parents of the given acls, they will be populated.
      */
     private void loadAcls( final Map<Serializable, Acl> acls, final Set<Long> objectIdentityIds ) {
         Assert.notNull( acls, "ACLs are required" );
         Assert.notEmpty( objectIdentityIds, "Items to find now required" );
 
-        Query query = this.getSessionFactory().getCurrentSession()
+        Query query = sessionFactory.getCurrentSession()
             .createQuery( "from AclObjectIdentity where id in (:ids)" ).setParameterList( "ids", objectIdentityIds );
 
         List<?> queryR = query.list();

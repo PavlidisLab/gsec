@@ -19,11 +19,12 @@
 
 package gemma.gsec.acl;
 
+import gemma.gsec.acl.domain.AclObjectIdentity;
+import gemma.gsec.model.Securable;
+import gemma.gsec.model.SecureValueObject;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.ObjectIdentityRetrievalStrategy;
-
-import gemma.gsec.acl.domain.AclObjectIdentity;
-import gemma.gsec.model.SecureValueObject;
+import org.springframework.util.Assert;
 
 /**
  * Customized to know how to deal with SecureValueObject, makes it easier to share code in SecurityService; and doesn't
@@ -32,20 +33,16 @@ import gemma.gsec.model.SecureValueObject;
  * @author Paul
  * @version $Id: ValueObjectAwareIdentityRetrievalStrategyImpl.java,v 1.3 2013/09/14 16:56:02 paul Exp $
  */
-public class ValueObjectAwareIdentityRetrievalStrategyImpl implements ObjectIdentityRetrievalStrategy {
+public class ObjectIdentityRetrievalStrategyImpl implements ObjectIdentityRetrievalStrategy {
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.acls.model.ObjectIdentityRetrievalStrategy#getObjectIdentity(java.lang.Object)
-     */
     @Override
     public ObjectIdentity getObjectIdentity( Object domainObject ) {
-        if ( SecureValueObject.class.isAssignableFrom( domainObject.getClass() ) ) {
+        Assert.isInstanceOf( Securable.class, domainObject, "The domain object must implement the Securable interface" );
+        if ( domainObject instanceof SecureValueObject ) {
             SecureValueObject svo = ( SecureValueObject ) domainObject;
             return new AclObjectIdentity( svo.getSecurableClass(), svo.getId() );
+        } else {
+            return new AclObjectIdentity( ( Securable ) domainObject );
         }
-        return new AclObjectIdentity( domainObject );
-
     }
 }

@@ -69,6 +69,5 @@
  * This would also mean some of the other classes can be reverted to the generic ones provided from spring
  * security.</li>
  * </ul>
- *
  */
 package gemma.gsec;

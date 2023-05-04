@@ -68,7 +68,7 @@ public class AuthorityConstants {
      * Name of the 'group' for anonymous users. Note: we don't use this; you should use
      * AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY instead.
      *
-     * @see org.springframework.security.access.vote.AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY
+     * @see org.springframework.security.access.vote.AuthenticatedVoter#IS_AUTHENTICATED_ANONYMOUSLY
      */
     public static final String ANONYMOUS_GROUP_AUTHORITY = "GROUP_ANONYMOUS";
 

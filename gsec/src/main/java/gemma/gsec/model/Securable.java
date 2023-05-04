@@ -18,17 +18,18 @@
  */
 package gemma.gsec.model;
 
+import java.io.Serializable;
+
 /**
  * Interface that indicates an entity can be secured. By default, permissions are inherited by associated objects.
  *
  * @author paul
  * @version $Id: Securable.java,v 1.4 2013/03/16 00:39:24 paul Exp $
  */
-public interface Securable {
+public interface Securable extends Serializable {
 
     /**
-     * @return
+     * Obtain the ID of this object.
      */
     Long getId();
-
 }

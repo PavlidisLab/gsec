@@ -14,9 +14,7 @@
  */
 package gemma.gsec.acl;
 
-import java.util.Arrays;
-import java.util.List;
-
+import gemma.gsec.acl.domain.AclPrincipalSid;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.acls.domain.AclAuthorizationStrategy;
 import org.springframework.security.acls.domain.BasePermission;
@@ -28,7 +26,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.Assert;
 
-import gemma.gsec.acl.domain.AclPrincipalSid;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * This is only needed because we use a custom Sid implementation.
@@ -41,22 +40,22 @@ public class AclAuthorizationStrategyImpl implements AclAuthorizationStrategy {
     private final GrantedAuthority gaGeneralChanges;
     private final GrantedAuthority gaModifyAuditing;
     private final GrantedAuthority gaTakeOwnership;
-    private SidRetrievalStrategy sidRetrievalStrategy = new AclSidRetrievalStrategyImpl();
+    private final SidRetrievalStrategy sidRetrievalStrategy;
 
     /**
      * Constructor. The only mandatory parameter relates to the system-wide {@link GrantedAuthority} instances that can
      * be held to always permit ACL changes.
      *
      * @param auths an array of <code>GrantedAuthority</code>s that have special permissions (index 0 is the authority
-     *        needed to change ownership, index 1 is the authority needed to modify auditing details, index 2 is the
-     *        authority needed to change other ACL and ACE details) (required)
+     *              needed to change ownership, index 1 is the authority needed to modify auditing details, index 2 is the
+     *              authority needed to change other ACL and ACE details) (required)
      */
-    @SuppressWarnings("null")
-    public AclAuthorizationStrategyImpl( GrantedAuthority[] auths ) {
+    public AclAuthorizationStrategyImpl( GrantedAuthority[] auths, SidRetrievalStrategy sidRetrievalStrategy ) {
         Assert.isTrue( auths != null && auths.length == 3, "GrantedAuthority[] with three elements required" );
         this.gaTakeOwnership = auths[0];
         this.gaModifyAuditing = auths[1];
         this.gaGeneralChanges = auths[2];
+        this.sidRetrievalStrategy = sidRetrievalStrategy;
     }
 
     // ~ Methods
@@ -102,17 +101,11 @@ public class AclAuthorizationStrategyImpl implements AclAuthorizationStrategy {
         // Try to get permission via ACEs within the ACL
         List<Sid> sids = sidRetrievalStrategy.getSids( authentication );
 
-        if ( acl.isGranted( Arrays.asList( BasePermission.ADMINISTRATION ), sids, false ) ) {
+        if ( acl.isGranted( Collections.singletonList( BasePermission.ADMINISTRATION ), sids, false ) ) {
             return;
         }
 
         throw new AccessDeniedException(
             "Principal does not have required ACL permissions to perform requested operation" );
     }
-
-    public void setSidRetrievalStrategy( SidRetrievalStrategy sidRetrievalStrategy ) {
-        Assert.notNull( sidRetrievalStrategy, "SidRetrievalStrategy required" );
-        this.sidRetrievalStrategy = sidRetrievalStrategy;
-    }
-
 }

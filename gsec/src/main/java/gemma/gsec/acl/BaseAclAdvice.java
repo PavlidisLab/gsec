@@ -21,21 +21,18 @@ import gemma.gsec.acl.domain.AclService;
 import gemma.gsec.model.Securable;
 import gemma.gsec.model.SecuredChild;
 import gemma.gsec.model.SecuredNotChild;
-import gemma.gsec.util.CrudUtils;
-import gemma.gsec.util.CrudUtilsImpl;
 import gemma.gsec.util.SecurityUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.Signature;
+import org.hibernate.Hibernate;
 import org.hibernate.LazyInitializationException;
+import org.hibernate.SessionFactory;
 import org.hibernate.engine.spi.CascadeStyle;
+import org.hibernate.engine.spi.CascadingAction;
 import org.hibernate.persister.entity.EntityPersister;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.acls.domain.BasePermission;
 import org.springframework.security.acls.model.*;
@@ -61,34 +58,23 @@ import java.util.Collection;
  * @author keshav
  * @author pavlidis
  * @version $Id: BaseAclAdvice.java,v 1.1 2013/09/14 16:56:03 paul Exp $
- * @see ubic.gemma.security.authorization.acl.AclPointcut
  */
-public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAware {
+@SuppressWarnings("unused")
+public abstract class BaseAclAdvice {
 
     private static final Log log = LogFactory.getLog( BaseAclAdvice.class );
 
-    // @Autowired
-    private AclService aclService;
+    private final AclService aclService;
+    private final SessionFactory sessionFactory;
+    private final ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy;
 
-    private BeanFactory beanFactory;
-
-    // @Autowired
-    private CrudUtils crudUtils;
-
-    private ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy = new ValueObjectAwareIdentityRetrievalStrategyImpl();
-
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        this.crudUtils = this.beanFactory.getBean( CrudUtils.class );
-        this.aclService = this.beanFactory.getBean( AclService.class );
+    protected BaseAclAdvice( AclService aclService, SessionFactory sessionFactory, ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy ) {
+        this.aclService = aclService;
+        this.sessionFactory = sessionFactory;
+        this.objectIdentityRetrievalStrategy = objectIdentityRetrievalStrategy;
     }
 
-    /**
-     * @param jp
-     * @param retValue
-     * @throws Throwable
-     */
-    public final void doAclAdvice( JoinPoint jp, Object retValue ) throws Throwable {
+    public final void doAclAdvice( JoinPoint jp, Object retValue ) {
         //
 
         final Object[] args = jp.getArgs();
@@ -110,20 +96,20 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
         if ( persistentObject == null ) return;
 
-        final boolean isUpdate = CrudUtilsImpl.methodIsUpdate( methodName );
-        final boolean isDelete = CrudUtilsImpl.methodIsDelete( methodName );
+        final boolean isUpdate = methodIsUpdate( methodName );
+        final boolean isDelete = methodIsDelete( methodName );
 
         // Case 1: collection of securables.
         if ( Collection.class.isAssignableFrom( persistentObject.getClass() ) ) {
             for ( final Object o : ( Collection<?> ) persistentObject ) {
-                if ( !isEligibleForAcl( o ) ) {
+                if ( isIneligibleForAcl( o ) ) {
                     continue; // possibly could return, if we assume collection is homogeneous in type.
                 }
                 process( o, methodName, isUpdate, isDelete );
             }
         } else {
             // Case 2: single securable
-            if ( !isEligibleForAcl( persistentObject ) ) {
+            if ( isIneligibleForAcl( persistentObject ) ) {
                 /*
                  * This fails for methods that delete entities given an id.
                  */
@@ -134,34 +120,16 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
     }
 
-    public void setAclService( AclService aclService ) {
-        this.aclService = aclService;
-    }
-
-    @Override
-    public void setBeanFactory( BeanFactory beanFactory ) throws BeansException {
-        this.beanFactory = beanFactory;
-
-    }
-
-    public void setObjectIdentityRetrievalStrategy( ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy ) {
-        this.objectIdentityRetrievalStrategy = objectIdentityRetrievalStrategy;
-    }
-
     // from gemma reflectionutil
-    Object getProperty( Object object, PropertyDescriptor descriptor ) throws IllegalAccessException,
+    private Object getProperty( Object object, PropertyDescriptor descriptor ) throws IllegalAccessException,
         InvocationTargetException {
         Method getter = descriptor.getReadMethod();
-        Object associatedObject = getter.invoke( object );
-        return associatedObject;
+        return getter.invoke( object );
     }
 
     /**
      * Check for special cases of objects that don't need to be examined for associations at all, for efficiency when
      * following associations. Default implementation always returns false.
-     *
-     * @param object
-     * @return
      */
     protected boolean canSkipAclCheck( Object object ) {
         return false;
@@ -170,9 +138,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
     /**
      * Check if the association may be skipped. Default implementation always returns false.
      *
-     * @param object the target object which has the property
+     * @param object       the target object which has the property
      * @param propertyName the name of the property to consider skipping
-     * @return
      */
     protected boolean canSkipAssociationCheck( Object object, String propertyName ) {
         return false;
@@ -183,10 +150,9 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * <p>
      * FIXME this might not be necessary.
      *
-     * @param acl may be modified by this call
+     * @param acl       may be modified by this call
      * @param parentAcl value may be changed by this call
-     * @param sid value may be changed by this call
-     * @param object
+     * @param sid       value may be changed by this call
      */
     protected void createOrUpdateAclSpecialCases( MutableAcl acl, Acl parentAcl, Sid sid, Securable object ) {
     }
@@ -205,8 +171,6 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
     /**
      * For use by other overridden methods.
-     *
-     * @return
      */
     protected final AclService getAclService() {
         return aclService;
@@ -226,7 +190,6 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * to reach the parent.
      *
      * @param s which might have a parent already in the system
-     * @return
      */
     protected Acl locateParentAcl( SecuredChild s ) {
         Securable parent = locateSecuredParent( s );
@@ -262,13 +225,6 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * <li>If the current user is an adminisrator, and keepPrivateEvenWhenAdmin is false, the object gets READ
      * permissions for ANONYMOUS.
      * <li>If the current user is a "regular user" (non-admin) give them read/write permissions.
-     *
-     * @param acl
-     * @param oi
-     * @param sid
-     * @param isAdmin
-     * @param isAnonymous
-     * @param keepPrivateEvenWhenAdmin
      */
     protected void setupBaseAces( MutableAcl acl, ObjectIdentity oi, Sid sid, boolean keepPrivateEvenWhenAdmin ) {
 
@@ -320,10 +276,9 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * For example, when we persist an EE we also persist any new ADs in the same transaction. Thus the ADs need ACL
      * attention at the same time (via the BioAssays).
      *
-     * @param object we are checking
+     * @param object   we are checking
      * @param property of the object
      * @return true if the association should be followed (even though it might not be based on cascade status)
-     * @see AuditAdvice for similar code for Auditing
      */
     protected boolean specialCaseForAssociationFollow( Object object, String property ) {
         return false;
@@ -335,8 +290,6 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * Implementers will check the class of the object, and the class of the parent (e.g. using <code>Class.forName(
      * parentAcl.getObjectIdentity().getType() )</code>) and decide what to do.
      *
-     * @param object
-     * @param parentAcl
      * @return false if ACEs should be retained. True if ACEs should be removed (if possible).
      */
     protected boolean specialCaseToAllowRemovingAcesFromChild( Securable object, Acl parentAcl ) {
@@ -344,32 +297,28 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
     }
 
     /**
-     * Certain objects are not made public immediately on creation by administrators. The default implementation returns
-     * true if clazz is assignable to SecuredChild; otherwise false. Subclasses overriding this method should probably
-     * call super.specialCaseToKeepPrivateOnCreation()
+     * Indicate if the given object should not be made public immediately on creation by administrators.
+     * <p>
+     * The default implementation returns true if the object is a {@link SecuredChild}; otherwise false.
      *
-     * @param clazz
      * @return true if it's a special case to be kept private on creation.
      */
-    protected boolean specialCaseToKeepPrivateOnCreation( Class<? extends Securable> clazz ) {
-
-        return SecuredChild.class.isAssignableFrom( clazz );
-
+    protected boolean specialCaseToKeepPrivateOnCreation( Securable object ) {
+        return object instanceof SecuredChild;
     }
 
     /**
      * Creates the Acl object.
      *
-     * @param acl If non-null we're in update mode, possibly setting the parent.
-     * @param object The domain object.
+     * @param acl       If non-null we're in update mode, possibly setting the parent.
+     * @param object    The domain object.
      * @param parentAcl can be null
-     * @return the new or updated ACL
      */
-    private final MutableAcl addOrUpdateAcl( MutableAcl acl, Securable object, Acl parentAcl ) {
+    private void addOrUpdateAcl( MutableAcl acl, Securable object, Acl parentAcl ) {
 
         if ( object.getId() == null ) {
             log.warn( "ACLs cannot be added or updated on non-persistent object: " + object );
-            return null;
+            return;
         }
 
         if ( log.isTraceEnabled() ) log.trace( "Checking for ACLS on " + object );
@@ -388,7 +337,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
                  */
                 try {
                     maybeSetParentACL( object, acl, parentAcl );
-                    return acl;
+                    return;
                 } catch ( NotFoundException nfe ) {
                     log.error( nfe, nfe );
                 }
@@ -413,7 +362,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
             throw new IllegalStateException( "Principal was null for " + authentication );
         }
 
-        Sid sid = new AclPrincipalSid( p.toString() );
+        AclPrincipalSid sid = new AclPrincipalSid( p.toString() );
 
         boolean isAdmin = currentUserIsAdmin();
 
@@ -423,14 +372,14 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
         boolean objectIsAGroup = objectIsUserGroup( object );
 
-        boolean keepPrivateEvenWhenAdmin = this.specialCaseToKeepPrivateOnCreation( object.getClass() );
+        boolean keepPrivateEvenWhenAdmin = this.specialCaseToKeepPrivateOnCreation( object );
 
         /*
          * The only case where we absolutely disallow inheritance is for SecuredNotChild.
          */
-        boolean inheritFromParent = parentAcl != null && !SecuredNotChild.class.isAssignableFrom( object.getClass() );
+        boolean inheritFromParent = parentAcl != null && !( object instanceof SecuredNotChild );
 
-        boolean missingParent = parentAcl == null & SecuredChild.class.isAssignableFrom( object.getClass() );
+        boolean missingParent = parentAcl == null && object instanceof SecuredChild;
 
         if ( missingParent ) {
             // This easily happens, it's not a problem as we go back through to recheck objects. Example: analysis,
@@ -443,7 +392,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
          * have to put in ACEs. Same goes if we're not supposed to inherit. Objects which are not supposed to have their
          * own ACLs (SecurableChild)
          */
-        if ( create && ( !inheritFromParent || parentAcl == null ) ) {
+        if ( create && !inheritFromParent ) {
             setupBaseAces( acl, oi, sid, keepPrivateEvenWhenAdmin );
 
             /*
@@ -468,7 +417,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
         if ( create && objectIsAUser ) {
             String userName = getUserName( object );
-            if ( ( ( AclPrincipalSid ) sid ).getPrincipal().equals( userName ) ) {
+            if ( sid.getPrincipal().equals( userName ) ) {
                 /*
                  * This case should actually never happen. "we" are the user who is creating this user. We've already
                  * adding the READ/WRITE permissions above.
@@ -523,7 +472,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
         }
 
         // finalize.
-        return getAclService().updateAcl( acl );
+        getAclService().updateAcl( acl );
 
     }
 
@@ -532,12 +481,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * <p>
      * If the object is a SecuredNotChild, then it will be treated as the parent. For example, ArrayDesigns associated
      * with an Experiment has 'parent status' for securables associated with the AD, such as LocalFiles.
-     *
-     * @param object
-     * @param previousParent
-     * @return
      */
-    private final Acl chooseParentForAssociations( Object object, Acl previousParent ) {
+    private Acl chooseParentForAssociations( Object object, Acl previousParent ) {
         Acl parentAcl;
         if ( SecuredNotChild.class.isAssignableFrom( object.getClass() )
             || ( previousParent == null && Securable.class.isAssignableFrom( object.getClass() ) && !SecuredChild.class
@@ -558,12 +503,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
     /**
      * Delete acl permissions for an object.
-     *
-     * @param object
-     * @throws IllegalArgumentException
-     * @throws DataAccessException
      */
-    private final void deleteAcl( Securable object ) throws DataAccessException, IllegalArgumentException {
+    private void deleteAcl( Securable object ) throws DataAccessException, IllegalArgumentException {
         ObjectIdentity oi = makeObjectIdentity( object );
 
         if ( oi == null ) {
@@ -580,7 +521,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
         this.getAclService().deleteAcl( oi, true );
     }
 
-    private final MutableAcl getAcl( Securable s ) {
+    private MutableAcl getAcl( Securable s ) {
         ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
 
         try {
@@ -590,14 +531,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
         }
     }
 
-    /**
-     * @param retValue
-     * @param m
-     * @param args
-     * @return
-     */
-    private final Object getPersistentObject( Object retValue, String methodName, Object[] args ) {
-        if ( CrudUtilsImpl.methodIsDelete( methodName ) || CrudUtilsImpl.methodIsUpdate( methodName ) ) {
+    private Object getPersistentObject( Object retValue, String methodName, Object[] args ) {
+        if ( methodIsDelete( methodName ) || methodIsUpdate( methodName ) ) {
 
             /*
              * Only deal with single-argument update methods. MIGHT WANT TO RETURN THE FIRST ARGUMENT
@@ -613,30 +548,20 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
     /**
      * Add ACE granting permission to sid to ACL (does not persist the change, you have to call update!)
      *
-     * @param acl which object
+     * @param acl        which object
      * @param permission which permission
-     * @param sid which principal
+     * @param sid        which principal
      */
-    private final void grant( MutableAcl acl, Permission permission, Sid sid ) {
+    private void grant( MutableAcl acl, Permission permission, Sid sid ) {
         acl.insertAce( acl.getEntries().size(), permission, sid, true );
     }
 
-    /**
-     * @param class1
-     * @return
-     */
-    private final boolean isEligibleForAcl( Object c ) {
-
-        if ( c == null ) return false;
-
-        return Securable.class.isAssignableFrom( c.getClass() );
+    private boolean isIneligibleForAcl( Object c ) {
+        return !( c instanceof Securable );
     }
 
     /**
      * Recursively locate the actual secured parent.
-     *
-     * @param s
-     * @return
      */
     private Securable locateSecuredParent( SecuredChild s ) {
         if ( s.getSecurityOwner() == null ) {
@@ -660,13 +585,10 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * Before deleting anything, we check that the ACEs on the child are exactly equivalent to the ones on the parent.
      * If they aren't, it implies the child was not correctly synchronized with the parent in the first place.
      *
-     * @param object
      * @param parentAcl -- careful with the order!
-     * @param acl
-     * @param true if ACEs were cleared (or if they were not there).
      * @throws IllegalStateException if the parent has no ACEs.
      */
-    private final boolean maybeClearACEsOnChild( Securable object, MutableAcl childAcl, Acl parentAcl ) {
+    private boolean maybeClearACEsOnChild( Securable object, MutableAcl childAcl, Acl parentAcl ) {
         if ( parentAcl == null ) return false;
         if ( object instanceof SecuredNotChild ) return false;
 
@@ -742,12 +664,10 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * <p>
      * Be careful with the argument order!
      *
-     * @param object
-     * @param acl - the potential child
+     * @param childAcl  - the potential child
      * @param parentAcl - the potential parent
-     * @return parentAcl can be null, esp. if the object is SecuredNotChild (always)
      */
-    private final Acl maybeSetParentACL( final Securable object, MutableAcl childAcl, final Acl parentAcl ) {
+    private void maybeSetParentACL( final Securable object, MutableAcl childAcl, final Acl parentAcl ) {
         if ( parentAcl != null && !SecuredNotChild.class.isAssignableFrom( object.getClass() ) ) {
 
             Acl currentParentAcl = childAcl.getParentAcl();
@@ -772,18 +692,13 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
                 getAclService().updateAcl( childAcl );
             }
         }
-        return childAcl.getParentAcl();
+        childAcl.getParentAcl();
     }
 
     /**
      * Do necessary ACL operations on the object.
-     *
-     * @param o
-     * @param methodName
-     * @param isUpdate
-     * @param isDelete
      */
-    private final void process( final Object o, final String methodName, final boolean isUpdate, final boolean isDelete ) {
+    private void process( final Object o, final String methodName, final boolean isUpdate, final boolean isDelete ) {
 
         Securable s = ( Securable ) o;
 
@@ -806,19 +721,17 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
     /**
      * Walk the tree of associations and add (or update) acls.
      *
-     * @param methodName method name
-     * @param object
+     * @param methodName     method name
      * @param previousParent The parent ACL of the given object (if it is a Securable) or of the last visited Securable.
-     * @see AuditAdvice for similar code for Auditing
      */
     @SuppressWarnings("unchecked")
-    private final void processAssociations( String methodName, Object object, Acl previousParent ) {
+    private void processAssociations( String methodName, Object object, Acl previousParent ) {
 
         if ( canSkipAclCheck( object ) ) {
             return;
         }
 
-        EntityPersister persister = crudUtils.getEntityPersister( object );
+        EntityPersister persister = ( EntityPersister ) sessionFactory.getClassMetadata( Hibernate.getClass( object ) );
         if ( persister == null ) {
             log.error( "No Entity Persister found for " + object.getClass().getName() );
             return;
@@ -841,7 +754,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
              * _every_ association, which will often not be reachable.
              */
             if ( !specialCaseForAssociationFollow( object, propertyName )
-                && ( canSkipAssociationCheck( object, propertyName ) || !crudUtils.needCascade( methodName, cs ) ) ) {
+                && ( canSkipAssociationCheck( object, propertyName ) || !needCascade( methodName, cs ) ) ) {
                 // if ( log.isTraceEnabled() )
                 // log.trace( "Skipping checking association: " + propertyName + " on " + object );
                 continue;
@@ -849,7 +762,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
             PropertyDescriptor descriptor = BeanUtils.getPropertyDescriptor( object.getClass(), propertyName );
 
-            Object associatedObject = null;
+            Object associatedObject;
             try {
                 // FieldUtils DOES NOT WORK correctly with proxies
                 associatedObject = getProperty( object, descriptor );
@@ -880,8 +793,8 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
 
                         if ( Securable.class.isAssignableFrom( object2.getClass() ) ) {
                             addOrUpdateAcl( null, ( Securable ) object2, parentAcl );
-                        } else {
-                            // if ( log.isTraceEnabled() ) log.trace( object2 + ": not securable, skipping" );
+                        } else if ( log.isTraceEnabled() ) {
+                            log.trace( object2 + ": not securable, skipping" );
                         }
                         processAssociations( methodName, object2, parentAcl );
                     }
@@ -909,11 +822,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
         }
     }
 
-    /**
-     * @param methodName
-     * @param s
-     */
-    private final void startCreate( String methodName, Securable s ) {
+    private void startCreate( String methodName, Securable s ) {
 
         /*
          * Note that if the method is findOrCreate, we'll return quickly.
@@ -942,7 +851,7 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
      * @param m the update method
      * @param s the securable being updated.
      */
-    private final void startUpdate( String m, Securable s ) {
+    private void startUpdate( String m, Securable s ) {
 
         ObjectIdentity oi = makeObjectIdentity( s );
 
@@ -970,4 +879,19 @@ public abstract class BaseAclAdvice implements InitializingBean, BeanFactoryAwar
         processAssociations( m, s, parentAcl );
     }
 
+
+    private boolean methodIsDelete( String s ) {
+        return s.equals( "remove" ) || s.equals( "delete" );
+    }
+
+    private boolean methodIsUpdate( String s ) {
+        return s.equals( "update" ) || s.equals( "persistOrUpdate" );
+    }
+
+    private boolean needCascade( String m, CascadeStyle cs ) {
+        if ( methodIsDelete( m ) ) {
+            return cs.doCascade( CascadingAction.DELETE );
+        }
+        return cs.doCascade( CascadingAction.PERSIST ) || cs.doCascade( CascadingAction.SAVE_UPDATE );
+    }
 }

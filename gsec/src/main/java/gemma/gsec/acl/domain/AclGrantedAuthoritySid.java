@@ -17,6 +17,8 @@ package gemma.gsec.acl.domain;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.util.Assert;
 
+import java.util.Objects;
+
 /**
  * @author Paul
  * @version $Id: AclGrantedAuthoritySid.java,v 1.1 2013/09/14 16:55:18 paul Exp $
@@ -28,9 +30,6 @@ public class AclGrantedAuthoritySid extends AclSid {
     private static final long serialVersionUID = 7755206462003052441L;
     private String grantedAuthority;
 
-    public AclGrantedAuthoritySid() {
-    }
-
     public AclGrantedAuthoritySid( GrantedAuthority grantedAuthority ) {
         Assert.notNull( grantedAuthority, "GrantedAuthority required" );
         Assert.notNull( grantedAuthority.getAuthority(),
@@ -38,13 +37,32 @@ public class AclGrantedAuthoritySid extends AclSid {
         this.grantedAuthority = grantedAuthority.getAuthority();
     }
 
+    @SuppressWarnings("unused")
+    public AclGrantedAuthoritySid() {
+
+    }
+
     public AclGrantedAuthoritySid( String grantedAuthority ) {
         this.grantedAuthority = grantedAuthority;
     }
 
+    public String getGrantedAuthority() {
+        return grantedAuthority;
+    }
+
+    @SuppressWarnings("unused")
+    public void setGrantedAuthority( String grantedAuthority ) {
+        this.grantedAuthority = grantedAuthority;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash( grantedAuthority );
+    }
+
     @Override
     public boolean equals( Object object ) {
-        if ( ( object == null ) || !( object instanceof AclGrantedAuthoritySid ) ) {
+        if ( !( object instanceof AclGrantedAuthoritySid ) ) {
             return false;
         }
 
@@ -52,19 +70,6 @@ public class AclGrantedAuthoritySid extends AclSid {
 
         // Delegate to getGrantedAuthority() to perform actual comparison (both should be identical)
         return ( ( AclGrantedAuthoritySid ) object ).getGrantedAuthority().equals( this.getGrantedAuthority() );
-    }
-
-    public String getGrantedAuthority() {
-        return grantedAuthority;
-    }
-
-    @Override
-    public int hashCode() {
-        return this.getGrantedAuthority().hashCode();
-    }
-
-    public void setGrantedAuthority( String grantedAuthority ) {
-        this.grantedAuthority = grantedAuthority;
     }
 
     @Override

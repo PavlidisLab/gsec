@@ -19,56 +19,49 @@
 
 package gemma.gsec.acl.domain;
 
-import java.io.Serializable;
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.HashSet;
-
-import org.springframework.security.acls.domain.IdentityUnavailableException;
+import gemma.gsec.model.Securable;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Sid;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
-import gemma.gsec.model.Securable;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 /**
- * TODO Document Me
+ * Implementation of {@link ObjectIdentity}.
  *
  * @author Paul
  * @version $Id: AclObjectIdentity.java,v 1.1 2013/09/14 16:55:18 paul Exp $
  */
 public class AclObjectIdentity implements ObjectIdentity {
-    /**
-     *
-     */
+
     private static final long serialVersionUID = -6715898560226971244L;
-
-    // this should be ord
-    private Collection<AclEntry> entries = new HashSet<>();
-
-    private Boolean entriesInheriting = false;
 
     // of this objectidentity
     private Long id;
 
     // of the entity
-    private Serializable identifier;
+    private Long identifier;
+
+    private String type;
 
     private AclSid ownerSid;
 
     private AclObjectIdentity parentObject;
 
-    private String type;
+    private Set<AclEntry> entries = new HashSet<>();
 
+    private boolean entriesInheriting = false;
+
+    @SuppressWarnings("unused")
     public AclObjectIdentity() {
     }
 
-    /**
-     * @param javaType
-     * @param identifier
-     */
     public AclObjectIdentity( Class<? extends Securable> javaType, Long identifier ) {
+        Assert.notNull( javaType, "The java type must be non-null" );
+        Assert.notNull( identifier, "The identifier must be non-null" );
         this.type = javaType.getName();
         this.identifier = identifier;
     }
@@ -78,75 +71,80 @@ public class AclObjectIdentity implements ObjectIdentity {
      * tables. For polymorphic classes this will be a problem if the method returns the superclass, so use fetch all
      * properties. Example: PhenotypeAssociationDao. See chapter 19.1.3 of the Hibernate documentation for an
      * explanation about polymorphic classes and proxies.
-     *
-     * @param object
      */
-    public AclObjectIdentity( Object object ) {
-
+    public AclObjectIdentity( Securable object ) {
+        Assert.notNull( object.getId(), "ID is required to be non-null" );
         Class<?> typeClass = ClassUtils.getUserClass( object.getClass() );
-
         type = typeClass.getName();
-
-        Object result;
-        try {
-            Method method = typeClass.getMethod( "getId" );
-            result = method.invoke( object );
-        } catch ( Exception e ) {
-            throw new IdentityUnavailableException( "Could not extract identity from object " + object, e );
-        }
-
-        Assert.notNull( result, "getId() is required to return a non-null value" );
-        Assert.isInstanceOf( Serializable.class, result, "Getter must provide a return value of type Serializable" );
-        this.identifier = ( Serializable ) result;
+        this.identifier = object.getId();
 
     }
 
-    public AclObjectIdentity( String type, Serializable identifier ) {
-        this();
+    public AclObjectIdentity( String type, Long identifier ) {
         this.type = type;
         this.identifier = identifier;
-    }
-
-    @Override
-    public boolean equals( Object o ) {
-        if ( o == null ) return false;
-        if ( o == this ) return true;
-        if ( !( o instanceof ObjectIdentity ) ) return false;
-
-        ObjectIdentity oi = ( ObjectIdentity ) o;
-
-        return ( this.type.equals( oi.getType() ) && this.identifier.equals( oi.getIdentifier() ) );
-
-    }
-
-    public Collection<AclEntry> getEntries() {
-        return entries;
-    }
-
-    public Boolean getEntriesInheriting() {
-        return entriesInheriting;
     }
 
     public Long getId() {
         return id;
     }
 
+    public void setId( Long id ) {
+        this.id = id;
+    }
+
     @Override
-    public Serializable getIdentifier() {
+    public String getType() {
+        return this.type;
+    }
+
+    public void setType( String type ) {
+        this.type = type;
+    }
+
+    @Override
+    public Long getIdentifier() {
         return this.identifier;
+    }
+
+    @SuppressWarnings("unused")
+    public void setIdentifier( Long identifier ) {
+        this.identifier = identifier;
+    }
+
+    public Set<AclEntry> getEntries() {
+        return entries;
+    }
+
+    @SuppressWarnings("unused")
+    public void setEntries( Set<AclEntry> entries ) {
+        this.entries = entries;
+    }
+
+    public boolean getEntriesInheriting() {
+        return entriesInheriting;
+    }
+
+    public void setEntriesInheriting( boolean entriesInheriting ) {
+        this.entriesInheriting = entriesInheriting;
     }
 
     public AclSid getOwnerSid() {
         return ownerSid;
     }
 
+
+    public void setOwnerSid( Sid ownerSid ) {
+        this.ownerSid = ( AclSid ) ownerSid;
+    }
+
     public AclObjectIdentity getParentObject() {
         return parentObject;
     }
 
-    @Override
-    public String getType() {
-        return this.type;
+    public void setParentObject( AclObjectIdentity parentObject ) {
+        assert parentObject != this && !this.equals( parentObject );
+        this.parentObject = parentObject;
     }
 
     /**
@@ -156,49 +154,20 @@ public class AclObjectIdentity implements ObjectIdentity {
      */
     @Override
     public int hashCode() {
-        int code = 31;
-        code ^= this.type.hashCode();
-        code ^= this.identifier.hashCode();
-        return code;
+        return Objects.hash( type, identifier );
     }
 
-    public void setEntries( Collection<AclEntry> entries ) {
-        this.entries = entries;
-    }
-
-    public void setEntriesInheriting( Boolean entriesInheriting ) {
-        this.entriesInheriting = entriesInheriting;
-    }
-
-    public void setId( Long id ) {
-        this.id = id;
-    }
-
-    public void setIdentifier( Serializable identifier ) {
-        this.identifier = identifier;
-    }
-
-    public void setOwnerSid( Sid ownerSid ) {
-        this.ownerSid = ( AclSid ) ownerSid;
-    }
-
-    public void setParentObject( AclObjectIdentity parentObject ) {
-        assert parentObject != this && !this.equals( parentObject );
-        this.parentObject = parentObject;
-    }
-
-    public void setType( String type ) {
-        this.type = type;
+    @Override
+    public boolean equals( Object o ) {
+        if ( o == null ) return false;
+        if ( o == this ) return true;
+        if ( !( o instanceof ObjectIdentity ) ) return false;
+        ObjectIdentity oi = ( ObjectIdentity ) o;
+        return ( this.type.equals( oi.getType() ) && this.identifier.equals( oi.getIdentifier() ) );
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append( this.getClass().getName() ).append( "[" );
-        sb.append( "Type: " ).append( this.type );
-        sb.append( "; Identifier: " ).append( this.identifier ).append( "]" );
-
-        return sb.toString();
+        return String.format( "%s[Type: %s; Identifier: %s]", this.getClass().getName(), this.type, this.identifier );
     }
-
 }

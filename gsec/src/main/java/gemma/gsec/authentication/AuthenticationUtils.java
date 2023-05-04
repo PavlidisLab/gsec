@@ -18,9 +18,7 @@
  */
 package gemma.gsec.authentication;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import gemma.gsec.AuthorityConstants;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -30,7 +28,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import gemma.gsec.AuthorityConstants;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Common methods for authenticating users.

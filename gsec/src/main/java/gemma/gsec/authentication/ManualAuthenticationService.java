@@ -14,8 +14,6 @@
  */
 package gemma.gsec.authentication;
 
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 
@@ -38,8 +36,6 @@ public interface ManualAuthenticationService {
      * Provide "anonymous" authentication.
      */
     void authenticateAnonymously();
-
-    void setApplicationContext( ApplicationContext applicationContext ) throws BeansException;
 
     /**
      * Entry point for non-http request.

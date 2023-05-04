@@ -18,23 +18,21 @@
  */
 package gemma.gsec.model;
 
-import java.io.Serializable;
-
 /**
  * Indicates that a value object represents a Securable so security filtering can be provided during reading.
  *
  * @author cmcdonald
  * @version $Id: SecureValueObject.java,v 1.5 2013/09/14 16:55:17 paul Exp $
  */
-public interface SecureValueObject extends Serializable, Securable {
+public interface SecureValueObject extends Securable {
 
     /**
-     * @return true if the object is public
+     * Indicate if the object is public.
      */
     boolean getIsPublic();
 
     /**
-     * @return
+     * Indicate if the object is shared.
      */
     boolean getIsShared();
 
@@ -44,30 +42,20 @@ public interface SecureValueObject extends Serializable, Securable {
     Class<? extends Securable> getSecurableClass();
 
     /**
-     * @return
+     * Indicate if the current user can modify this object.
      */
     boolean getUserCanWrite();
 
     /**
-     * @return true if the object is owned by the current user
+     * Indicate if the current user owns the object.
      */
     boolean getUserOwned();
 
     void setIsPublic( boolean isPublic );
 
-    /**
-     * @param isShared
-     */
     void setIsShared( boolean isShared );
 
-    /**
-     * @param userCanWrite
-     */
     void setUserCanWrite( boolean userCanWrite );
 
-    /**
-     * @param isUserOwned
-     */
     void setUserOwned( boolean isUserOwned );
-
 }
