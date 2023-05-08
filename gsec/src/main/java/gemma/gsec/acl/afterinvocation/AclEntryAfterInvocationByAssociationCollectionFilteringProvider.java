@@ -18,8 +18,6 @@
  */
 package gemma.gsec.acl.afterinvocation;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.springframework.security.acls.model.AclService;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.core.Authentication;
@@ -37,9 +35,6 @@ import java.util.List;
  */
 @SuppressWarnings("unused")
 public abstract class AclEntryAfterInvocationByAssociationCollectionFilteringProvider extends AclEntryAfterInvocationCollectionFilteringProvider {
-
-    protected static final Log logger = LogFactory.getLog( AclEntryAfterInvocationByAssociationCollectionFilteringProvider.class );
-
 
     public AclEntryAfterInvocationByAssociationCollectionFilteringProvider( AclService aclService, String processConfigAttribute,
         List<Permission> requirePermission ) {
