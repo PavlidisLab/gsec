@@ -360,7 +360,7 @@ public class AclDaoImpl implements AclDao {
         Criterion[] clauses = new Criterion[idsByType.size()];
         int i = 0;
         for ( Map.Entry<String, Set<Serializable>> e : idsByType.entrySet() ) {
-            clauses[i] = Restrictions.and(
+            clauses[i++] = Restrictions.and(
                 Restrictions.eq( "type", e.getKey() ),
                 Restrictions.in( "identifier", e.getValue() ) );
         }
