@@ -20,10 +20,10 @@
 package gemma.gsec.acl.domain;
 
 import gemma.gsec.model.Securable;
+import org.hibernate.Hibernate;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Sid;
 import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -74,7 +74,7 @@ public class AclObjectIdentity implements ObjectIdentity {
      */
     public AclObjectIdentity( Securable object ) {
         Assert.notNull( object.getId(), "ID is required to be non-null" );
-        Class<?> typeClass = ClassUtils.getUserClass( object.getClass() );
+        Class<?> typeClass = Hibernate.getClass( object );
         type = typeClass.getName();
         this.identifier = object.getId();
 
@@ -163,7 +163,8 @@ public class AclObjectIdentity implements ObjectIdentity {
         if ( o == this ) return true;
         if ( !( o instanceof ObjectIdentity ) ) return false;
         ObjectIdentity oi = ( ObjectIdentity ) o;
-        return ( this.type.equals( oi.getType() ) && this.identifier.equals( oi.getIdentifier() ) );
+        return Objects.equals( type, oi.getType() )
+            && Objects.equals( identifier, oi.getIdentifier() );
     }
 
     @Override

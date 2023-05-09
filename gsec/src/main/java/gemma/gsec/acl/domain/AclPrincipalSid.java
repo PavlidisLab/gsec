@@ -69,8 +69,7 @@ public class AclPrincipalSid extends AclSid {
 
         if ( this == object ) return true;
 
-        // Delegate to getPrincipal() to perform actual comparison (both should be identical)
-        return ( ( AclPrincipalSid ) object ).getPrincipal().equals( this.getPrincipal() );
+        return Objects.equals( principal, ( ( AclPrincipalSid ) object ).principal );
     }
 
     @Override

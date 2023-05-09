@@ -68,8 +68,7 @@ public class AclGrantedAuthoritySid extends AclSid {
 
         if ( this == object ) return true;
 
-        // Delegate to getGrantedAuthority() to perform actual comparison (both should be identical)
-        return ( ( AclGrantedAuthoritySid ) object ).getGrantedAuthority().equals( this.getGrantedAuthority() );
+        return Objects.equals( grantedAuthority, ( ( AclGrantedAuthoritySid ) object ).grantedAuthority );
     }
 
     @Override

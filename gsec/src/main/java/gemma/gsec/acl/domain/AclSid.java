@@ -38,5 +38,4 @@ public abstract class AclSid implements Sid {
     public void setId( Long id ) {
         this.id = id;
     }
-
 }

@@ -26,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -124,7 +125,7 @@ public class AclServiceImpl implements AclService {
         return acl;
     }
 
-    private Map<ObjectIdentity, Acl> doReadAcls( final List<ObjectIdentity> objects, final List<Sid> sids ) throws NotFoundException {
+    private Map<ObjectIdentity, Acl> doReadAcls( final List<ObjectIdentity> objects, @Nullable final List<Sid> sids ) throws NotFoundException {
         if ( objects.isEmpty() ) {
             return Collections.emptyMap();
         }

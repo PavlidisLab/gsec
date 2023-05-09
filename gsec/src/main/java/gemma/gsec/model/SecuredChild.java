@@ -18,8 +18,10 @@
  */
 package gemma.gsec.model;
 
+import javax.annotation.Nullable;
+
 /**
- * Indicates a securable that must have a parent that holds the permissons. For example, BioAssays are given the same
+ * Indicates a securable that must have a parent that holds the permissions. For example, BioAssays are given the same
  * permissions as the holding Experiment, and no object should have the BioAssay's ACL as its parent.
  *
  * @author paul
@@ -27,5 +29,11 @@ package gemma.gsec.model;
  */
 public interface SecuredChild extends Securable {
 
-    Securable getSecurityOwner();
+    /**
+     * The security owner if known.
+     */
+    @Nullable
+    default Securable getSecurityOwner() {
+        return null;
+    }
 }

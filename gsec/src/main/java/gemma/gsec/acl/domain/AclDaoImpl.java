@@ -29,6 +29,7 @@ import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nullable;
 import javax.persistence.EntityNotFoundException;
 import java.io.Serializable;
 import java.util.*;
@@ -319,9 +320,14 @@ public class AclDaoImpl implements AclDao {
      * Does not check the cache;
      */
     private MutableAcl convertToAcl( AclObjectIdentity oi ) {
-        if ( oi == null ) return null;
+        return convertToAclInternal( oi );
+    }
 
-        return new AclImpl( oi, aclAuthorizationStrategy, convertToAcl( oi.getParentObject() ) );
+    private MutableAcl convertToAclInternal( @Nullable AclObjectIdentity oi ) {
+        if ( oi == null ) {
+            return null;
+        }
+        return new AclImpl( oi, aclAuthorizationStrategy, convertToAclInternal( oi.getParentObject() ) );
     }
 
     /**

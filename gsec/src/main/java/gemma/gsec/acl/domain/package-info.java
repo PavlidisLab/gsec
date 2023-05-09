@@ -6,6 +6,6 @@
  * @since 0.0.01
  */
 @ParametersAreNonnullByDefault
-package gemma.gsec.acl.afterinvocation;
+package gemma.gsec.acl.domain;
 
 import javax.annotation.ParametersAreNonnullByDefault;

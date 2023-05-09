@@ -27,6 +27,7 @@ import org.springframework.security.acls.model.Permission;
 import org.springframework.security.acls.model.Sid;
 import org.springframework.util.Assert;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -74,7 +75,7 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
 
     }
 
-    public AclEntry( Long o, Acl acl, Sid sid, Permission permission, boolean granting ) {
+    public AclEntry( @Nullable Long o, Acl acl, Sid sid, Permission permission, boolean granting ) {
         Assert.notNull( acl, "Acl required" );
         Assert.notNull( sid, "Sid required" );
         Assert.notNull( permission, "Permission required" );
@@ -119,6 +120,7 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
         return this.acl;
     }
 
+    @SuppressWarnings("unused")
     public int getAceOrder() {
         return aceOrder;
     }
@@ -154,18 +156,9 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
         if ( obj == null ) return false;
         if ( getClass() != obj.getClass() ) return false;
         AclEntry other = ( AclEntry ) obj;
-
-        if ( granting != other.granting ) {
-            return false;
-        }
-
-        if ( mask != other.mask ) {
-            return false;
-        }
-
-        if ( sid == null ) {
-            return other.sid == null;
-        } else return sid.equals( other.sid );
+        return granting == other.granting
+            && mask == other.mask
+            && Objects.equals( sid, other.sid );
     }
 
     @Override

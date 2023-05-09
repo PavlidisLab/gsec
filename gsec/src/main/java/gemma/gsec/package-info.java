@@ -70,4 +70,7 @@
  * security.</li>
  * </ul>
  */
+@ParametersAreNonnullByDefault
 package gemma.gsec;
+
+import javax.annotation.ParametersAreNonnullByDefault;

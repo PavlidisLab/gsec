@@ -6,6 +6,8 @@ import gemma.gsec.model.SecuredChild;
 import org.junit.Test;
 import org.springframework.security.acls.model.ObjectIdentityRetrievalStrategy;
 
+import javax.annotation.Nonnull;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ObjectIdentityRetrievalStrategyImplTest {
@@ -26,6 +28,7 @@ public class ObjectIdentityRetrievalStrategyImplTest {
         }
 
         @Override
+        @Nonnull
         public Securable getSecurityOwner() {
             return new Parent();
         }

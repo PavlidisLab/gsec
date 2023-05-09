@@ -38,5 +38,10 @@
             </list>
         </constructor-arg>
     </bean>
+    <bean id="aclAdvice" class="gemma.gsec.acl.AclAdvice">
+        <constructor-arg ref="aclService"/>
+        <constructor-arg ref="sessionFactory"/>
+        <constructor-arg ref="objectIdentityRetrievalStrategy"/>
+    </bean>
 </beans>
 

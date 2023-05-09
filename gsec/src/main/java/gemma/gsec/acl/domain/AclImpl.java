@@ -18,9 +18,11 @@ import org.springframework.security.acls.domain.AclAuthorizationStrategy;
 import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
 
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents an access control list (ACL) for a domain object. Based on spring-security AclImpl.
@@ -45,7 +47,7 @@ public class AclImpl implements OwnershipAcl {
      * @param parentAcl                the parent (may be <code>null</code>)
      */
     public AclImpl( AclObjectIdentity objectIdentity, AclAuthorizationStrategy aclAuthorizationStrategy,
-        Acl parentAcl ) {
+        @Nullable Acl parentAcl ) {
         Assert.notNull( objectIdentity, "Object Identity required" );
         Assert.notNull( aclAuthorizationStrategy, "AclAuthorizationStrategy required" );
         Assert.notNull( objectIdentity.getOwnerSid(), "Owner required" );
@@ -69,35 +71,14 @@ public class AclImpl implements OwnershipAcl {
     public boolean equals( Object obj ) {
         if ( obj == null ) return false;
         if ( this == obj ) return true;
-        if ( !( obj instanceof AclImpl ) ) return false;
+        if ( !( obj instanceof Acl ) ) return false;
 
-        AclImpl rhs = ( AclImpl ) obj;
+        Acl rhs = ( Acl ) obj;
 
-        if ( ( this.getId() == null && rhs.getId() == null ) || ( this.getId().equals( rhs.getId() ) ) ) {
-            if ( ( this.getOwner() == null && rhs.getOwner() == null ) || this.getOwner().equals( rhs.getOwner() ) ) {
-                if ( ( this.objectIdentity == null && rhs.objectIdentity == null )
-                    || ( this.objectIdentity.equals( rhs.objectIdentity ) ) ) {
-                    if ( ( this.parentAcl == null && rhs.parentAcl == null )
-                        || ( this.parentAcl.equals( rhs.parentAcl ) ) ) {
-
-                        // if ( ( this.loadedSids == null && rhs.loadedSids == null ) ) {
-                        // return true;
-                        // }
-                        // if ( this.loadedSids.size() == rhs.loadedSids.size() ) {
-                        // for ( int i = 0; i < this.loadedSids.size(); i++ ) {
-                        // if ( !this.loadedSids.get( i ).equals( rhs.loadedSids.get( i ) ) ) {
-                        // return false;
-                        // }
-                        // }
-                        // return true;
-                        // }
-                        return this.isEntriesInheriting() == rhs.isEntriesInheriting();
-                    }
-
-                }
-            }
-        }
-        return false;
+        return Objects.equals( objectIdentity, rhs.getObjectIdentity() )
+            && Objects.equals( getOwner(), rhs.getOwner() )
+            && Objects.equals( parentAcl, rhs.getParentAcl() )
+            && isEntriesInheriting() == rhs.isEntriesInheriting();
     }
 
     @Override
@@ -311,10 +292,10 @@ public class AclImpl implements OwnershipAcl {
     }
 
     @Override
-    public void setParent( Acl newParent ) {
+    public void setParent( @Nullable Acl newParent ) {
         aclAuthorizationStrategy.securityCheck( this, AclAuthorizationStrategy.CHANGE_GENERAL );
         Assert.isTrue( newParent == null || !newParent.equals( this ), "Cannot be the parent of yourself: " + newParent );
-        this.parentAcl = ( AclImpl ) newParent;
+        this.parentAcl = newParent;
     }
 
     @Override
