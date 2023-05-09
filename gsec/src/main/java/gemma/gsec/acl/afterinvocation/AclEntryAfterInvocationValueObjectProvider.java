@@ -46,7 +46,9 @@ public class AclEntryAfterInvocationValueObjectProvider extends AclEntryAfterInv
         ObjectIdentity objectIdentity = objectIdentityRetrievalStrategy.getObjectIdentity( domainObject );
         try {
             Acl acl = aclService.readAclById( objectIdentity, sids );
-            populateValueObject( ( SecureValueObject ) domainObject, acl, sids, requirePermission, SecurityUtil.getCurrentUsername(), SecurityUtil.isUserAdmin() );
+            if ( domainObject instanceof SecureValueObject ) {
+                populateValueObject( ( SecureValueObject ) domainObject, acl, sids, requirePermission, SecurityUtil.getCurrentUsername(), SecurityUtil.isUserAdmin() );
+            }
             return acl.isGranted( requirePermission, sids, false );
         } catch ( NotFoundException ignore ) {
             return false;
