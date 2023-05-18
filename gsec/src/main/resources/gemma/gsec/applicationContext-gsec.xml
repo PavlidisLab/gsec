@@ -56,6 +56,8 @@
 		<property name="permissionEvaluator" ref="permissionEvaluator"/>
 	</bean>
 
+	<bean id="authenticationTrustResolver" class="gemma.gsec.authentication.AuthenticationTrustResolverImpl"/>
+
 	<bean id="objectIdentityRetrievalStrategy" class="gemma.gsec.acl.ObjectIdentityRetrievalStrategyImpl"/>
 
 	<!-- Customized to use the roleHierarchy and our AclSids (otherwise we wouldn't need to declare this) -->
