@@ -4,7 +4,7 @@
     <parent>
         <groupId>ubc.pavlab</groupId>
         <artifactId>pavlab-starter-parent</artifactId>
-        <version>1.2.8</version>
+        <version>1.2.10</version>
     </parent>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
@@ -326,21 +326,20 @@
             </plugins>
         </pluginManagement>
     </build>
+    <distributionManagement>
+        <site>
+            <id>pavlab</id>
+            <url>scpexe://frink.msl.ubc.ca/space/web/maven-sites/${project.groupId}/${project.artifactId}-${project.version}</url>
+        </site>
+    </distributionManagement>
     <profiles>
         <profile>
             <!-- For deployment where host is local (and ssh isn't available for builder, e.g. CI) -->
             <id>local-deploy</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-                <property>
-                    <name>deploy.local</name>
-                </property>
-            </activation>
             <distributionManagement>
                 <site>
-                    <id>localDeploy</id>
-                    <name>localDeploy</name>
-                    <url>file:///space/gemmaData/gsec-site</url>
+                    <id>pavlab</id>
+                    <url>file:///space/web/maven-sites/${project.groupId}/${project.artifactId}-${project.version}</url>
                 </site>
             </distributionManagement>
         </profile>
