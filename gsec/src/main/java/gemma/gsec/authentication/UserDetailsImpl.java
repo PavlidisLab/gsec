@@ -22,6 +22,7 @@ import gemma.gsec.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
@@ -59,7 +60,7 @@ public class UserDetailsImpl implements UserDetails {
      * @param signupConfirmationKeyDateStamp
      */
     public UserDetailsImpl( String password, String userName, Boolean enabled,
-        Collection<GrantedAuthority> grantedAuthorities, String email, String signupConfirmationKey,
+        @Nullable Collection<GrantedAuthority> grantedAuthorities, String email, String signupConfirmationKey,
         Date signupConfirmationKeyDateStamp ) {
         super();
         this.password = password;

@@ -41,6 +41,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import javax.annotation.Nullable;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -154,7 +155,7 @@ public abstract class BaseAclAdvice {
      * @param parentAcl value may be changed by this call
      * @param sid       value may be changed by this call
      */
-    protected void createOrUpdateAclSpecialCases( MutableAcl acl, Acl parentAcl, Sid sid, Securable object ) {
+    protected void createOrUpdateAclSpecialCases( MutableAcl acl, @Nullable Acl parentAcl, Sid sid, Securable object ) {
     }
 
     protected boolean currentUserIsAdmin() {
@@ -314,7 +315,7 @@ public abstract class BaseAclAdvice {
      * @param object    The domain object.
      * @param parentAcl can be null
      */
-    private void addOrUpdateAcl( MutableAcl acl, Securable object, Acl parentAcl ) {
+    private void addOrUpdateAcl( @Nullable MutableAcl acl, Securable object, @Nullable Acl parentAcl ) {
 
         if ( object.getId() == null ) {
             log.warn( "ACLs cannot be added or updated on non-persistent object: " + object );
@@ -482,7 +483,7 @@ public abstract class BaseAclAdvice {
      * If the object is a SecuredNotChild, then it will be treated as the parent. For example, ArrayDesigns associated
      * with an Experiment has 'parent status' for securables associated with the AD, such as LocalFiles.
      */
-    private Acl chooseParentForAssociations( Object object, Acl previousParent ) {
+    private Acl chooseParentForAssociations( Object object, @Nullable Acl previousParent ) {
         Acl parentAcl;
         if ( SecuredNotChild.class.isAssignableFrom( object.getClass() )
             || ( previousParent == null && Securable.class.isAssignableFrom( object.getClass() ) && !SecuredChild.class
@@ -588,7 +589,7 @@ public abstract class BaseAclAdvice {
      * @param parentAcl -- careful with the order!
      * @throws IllegalStateException if the parent has no ACEs.
      */
-    private boolean maybeClearACEsOnChild( Securable object, MutableAcl childAcl, Acl parentAcl ) {
+    private boolean maybeClearACEsOnChild( Securable object, MutableAcl childAcl, @Nullable Acl parentAcl ) {
         if ( parentAcl == null ) return false;
         if ( object instanceof SecuredNotChild ) return false;
 
@@ -667,7 +668,7 @@ public abstract class BaseAclAdvice {
      * @param childAcl  - the potential child
      * @param parentAcl - the potential parent
      */
-    private void maybeSetParentACL( final Securable object, MutableAcl childAcl, final Acl parentAcl ) {
+    private void maybeSetParentACL( final Securable object, MutableAcl childAcl, @Nullable final Acl parentAcl ) {
         if ( parentAcl != null && !SecuredNotChild.class.isAssignableFrom( object.getClass() ) ) {
 
             Acl currentParentAcl = childAcl.getParentAcl();
@@ -725,7 +726,7 @@ public abstract class BaseAclAdvice {
      * @param previousParent The parent ACL of the given object (if it is a Securable) or of the last visited Securable.
      */
     @SuppressWarnings("unchecked")
-    private void processAssociations( String methodName, Object object, Acl previousParent ) {
+    private void processAssociations( String methodName, Object object, @Nullable Acl previousParent ) {
 
         if ( canSkipAclCheck( object ) ) {
             return;

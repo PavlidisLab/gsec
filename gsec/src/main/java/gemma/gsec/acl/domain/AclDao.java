@@ -19,6 +19,7 @@ import org.springframework.security.acls.model.MutableAcl;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Sid;
 
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.List;
 
@@ -28,14 +29,16 @@ import java.util.List;
  */
 public interface AclDao extends LookupStrategy {
 
-    AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, Boolean true1 );
+    AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, boolean entriesInheriting );
 
     void delete( ObjectIdentity objectIdentity, boolean deleteChildren );
 
     void delete( Sid sid );
 
+    @Nullable
     AclObjectIdentity find( ObjectIdentity oid );
 
+    @Nullable
     AclSid find( Sid sid );
 
     List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity );

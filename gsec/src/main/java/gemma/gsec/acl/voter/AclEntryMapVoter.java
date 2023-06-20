@@ -14,6 +14,7 @@ import java.util.Map;
 /**
  * A voter over the keys of a map.
  */
+@SuppressWarnings("unused")
 public class AclEntryMapVoter extends AclEntryCollectionVoter {
 
     public AclEntryMapVoter( AclService aclService, String processConfigAttribute, Permission[] requirePermission ) {

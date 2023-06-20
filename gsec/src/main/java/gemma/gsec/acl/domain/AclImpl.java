@@ -18,9 +18,11 @@ import org.springframework.security.acls.domain.AclAuthorizationStrategy;
 import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
 
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents an access control list (ACL) for a domain object. Based on spring-security AclImpl.
@@ -35,6 +37,7 @@ public class AclImpl implements OwnershipAcl {
     private final transient AclAuthorizationStrategy aclAuthorizationStrategy;
     private final List<AclEntry> entries;
     private final AclObjectIdentity objectIdentity;
+    @Nullable
     private Acl parentAcl;
 
     /**
@@ -45,7 +48,7 @@ public class AclImpl implements OwnershipAcl {
      * @param parentAcl                the parent (may be <code>null</code>)
      */
     public AclImpl( AclObjectIdentity objectIdentity, AclAuthorizationStrategy aclAuthorizationStrategy,
-        Acl parentAcl ) {
+        @Nullable Acl parentAcl ) {
         Assert.notNull( objectIdentity, "Object Identity required" );
         Assert.notNull( aclAuthorizationStrategy, "AclAuthorizationStrategy required" );
         Assert.notNull( objectIdentity.getOwnerSid(), "Owner required" );
@@ -76,9 +79,9 @@ public class AclImpl implements OwnershipAcl {
         if ( ( this.getId() == null && rhs.getId() == null ) || ( this.getId().equals( rhs.getId() ) ) ) {
             if ( ( this.getOwner() == null && rhs.getOwner() == null ) || this.getOwner().equals( rhs.getOwner() ) ) {
                 if ( ( this.objectIdentity == null && rhs.objectIdentity == null )
-                    || ( this.objectIdentity.equals( rhs.objectIdentity ) ) ) {
+                    || ( Objects.equals( this.objectIdentity, rhs.objectIdentity ) ) ) {
                     if ( ( this.parentAcl == null && rhs.parentAcl == null )
-                        || ( this.parentAcl.equals( rhs.parentAcl ) ) ) {
+                        || ( Objects.equals( this.parentAcl, rhs.parentAcl ) ) ) {
 
                         // if ( ( this.loadedSids == null && rhs.loadedSids == null ) ) {
                         // return true;
@@ -156,7 +159,7 @@ public class AclImpl implements OwnershipAcl {
                 "atIndexLocation must be less than or equal to the size of the AccessControlEntry collection" );
         }
 
-        AclEntry ace = new AclEntry( null, this, sid, permission, granting );
+        AclEntry ace = new AclEntry( this, sid, permission, granting );
 
         int osize = this.entries.size();
         synchronized ( entries ) {
@@ -311,7 +314,7 @@ public class AclImpl implements OwnershipAcl {
     }
 
     @Override
-    public void setParent( Acl newParent ) {
+    public void setParent( @Nullable Acl newParent ) {
         aclAuthorizationStrategy.securityCheck( this, AclAuthorizationStrategy.CHANGE_GENERAL );
         Assert.isTrue( newParent == null || !newParent.equals( this ), "Cannot be the parent of yourself: " + newParent );
         this.parentAcl = ( AclImpl ) newParent;

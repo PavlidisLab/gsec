@@ -26,5 +26,6 @@ public interface AclService extends MutableAclService {
     /**
      * Remove an {@link Sid} and all associated ACEs.
      */
+    @SuppressWarnings("unused")
     void deleteSid( Sid sid );
 }

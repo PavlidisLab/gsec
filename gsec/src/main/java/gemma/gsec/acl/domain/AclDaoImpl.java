@@ -33,6 +33,8 @@ import javax.persistence.EntityNotFoundException;
 import java.io.Serializable;
 import java.util.*;
 
+import static java.util.Objects.requireNonNull;
+
 /**
  * We have our own implementation of the AclDao in part because of deadlock problems caused by the default JDBC-based
  * spring security DAO. As documented here:
@@ -59,11 +61,10 @@ public class AclDaoImpl implements AclDao {
     }
 
     @Override
-    public AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid,
-        Boolean entitiesInheriting ) {
+    public AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, boolean entriesInheriting ) {
         AclObjectIdentity aoi = new AclObjectIdentity( type, ( Long ) identifier );
         aoi.setOwnerSid( sid );
-        aoi.setEntriesInheriting( entitiesInheriting );
+        aoi.setEntriesInheriting( entriesInheriting );
         sessionFactory.getCurrentSession().persist( aoi );
         return aoi;
     }
@@ -298,7 +299,8 @@ public class AclDaoImpl implements AclDao {
         AclObjectIdentity aclObjectIdentity = ( AclObjectIdentity ) acl.getObjectIdentity();
 
         if ( aclObjectIdentity.getOwnerSid().getId() == null ) {
-            aclObjectIdentity.setOwnerSid( this.find( acl.getOwner() ) );
+            aclObjectIdentity.setOwnerSid( requireNonNull( this.find( acl.getOwner() ),
+                String.format( "Failed to locate owner SID %s for %s", aclObjectIdentity.getOwnerSid(), aclObjectIdentity ) ) );
         }
 
         assert aclObjectIdentity.getOwnerSid() != null;
@@ -319,9 +321,7 @@ public class AclDaoImpl implements AclDao {
      * Does not check the cache;
      */
     private MutableAcl convertToAcl( AclObjectIdentity oi ) {
-        if ( oi == null ) return null;
-
-        return new AclImpl( oi, aclAuthorizationStrategy, convertToAcl( oi.getParentObject() ) );
+        return new AclImpl( oi, aclAuthorizationStrategy, oi.getParentObject() != null ? convertToAcl( oi.getParentObject() ) : null );
     }
 
     /**

@@ -51,7 +51,7 @@ public class AclAuthorizationStrategyImpl implements AclAuthorizationStrategy {
      *              authority needed to change other ACL and ACE details) (required)
      */
     public AclAuthorizationStrategyImpl( GrantedAuthority[] auths, SidRetrievalStrategy sidRetrievalStrategy ) {
-        Assert.isTrue( auths != null && auths.length == 3, "GrantedAuthority[] with three elements required" );
+        Assert.isTrue( auths.length == 3, "GrantedAuthority[] with three elements required" );
         this.gaTakeOwnership = auths[0];
         this.gaModifyAuditing = auths[1];
         this.gaGeneralChanges = auths[2];

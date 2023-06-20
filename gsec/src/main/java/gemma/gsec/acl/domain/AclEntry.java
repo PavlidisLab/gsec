@@ -74,11 +74,10 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
 
     }
 
-    public AclEntry( Long o, Acl acl, Sid sid, Permission permission, boolean granting ) {
+    public AclEntry( Acl acl, Sid sid, Permission permission, boolean granting ) {
         Assert.notNull( acl, "Acl required" );
         Assert.notNull( sid, "Sid required" );
         Assert.notNull( permission, "Permission required" );
-        this.id = o;
         this.acl = acl;
         this.sid = sid;
         this.mask = permission.getMask();
@@ -89,6 +88,10 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
     @Override
     public Long getId() {
         return this.id;
+    }
+
+    public void setId( Long id ) {
+        this.id = id;
     }
 
     @Override
@@ -119,6 +122,7 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
         return this.acl;
     }
 
+    @SuppressWarnings("unused")
     public int getAceOrder() {
         return aceOrder;
     }
