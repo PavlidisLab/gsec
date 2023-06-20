@@ -77,7 +77,10 @@ public class AclServiceImpl implements AclService {
     @Override
     @Transactional
     public void deleteAcl( ObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException {
-        aclDao.delete( aclDao.find( objectIdentity ), deleteChildren );
+        objectIdentity = aclDao.find( objectIdentity );
+        if ( objectIdentity != null ) {
+            aclDao.delete( objectIdentity, deleteChildren );
+        }
     }
 
     @Override
