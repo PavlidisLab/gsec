@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.security.acls.model.*;
 import org.springframework.security.core.Authentication;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -60,7 +61,12 @@ public class AclEntryAfterInvocationValueObjectCollectionFilteringProvider exten
 
         List<Sid> sids = this.sidRetrievalStrategy.getSids( authentication );
         List<ObjectIdentity> ois = getObjectIdentities( domainObjects );
-        Map<ObjectIdentity, Acl> aclsById = aclService.readAclsById( ois );
+        Map<ObjectIdentity, Acl> aclsById;
+        try {
+            aclsById = aclService.readAclsById( ois );
+        } catch ( NotFoundException e ) {
+            aclsById = Collections.emptyMap();
+        }
 
         String currentUsername = SecurityUtil.getCurrentUsername();
         boolean isAdmin = SecurityUtil.isUserAdmin();

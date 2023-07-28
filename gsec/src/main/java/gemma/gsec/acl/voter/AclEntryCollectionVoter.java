@@ -109,7 +109,12 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
             // if there are some null elements, the voter will abstain
             boolean shouldAbstain = ids.size() < coll.size();
 
-            Map<ObjectIdentity, Acl> acls = aclService.readAclsById( ids );
+            Map<ObjectIdentity, Acl> acls;
+            try {
+                acls = aclService.readAclsById( ids );
+            } catch ( NotFoundException e ) {
+                acls = Collections.emptyMap();
+            }
 
             List<Sid> sids = sidRetrievalStrategy.getSids( authentication );
 

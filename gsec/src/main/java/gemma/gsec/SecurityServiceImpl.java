@@ -97,12 +97,16 @@ public class SecurityServiceImpl implements SecurityService {
          * Take advantage of fast bulk loading of ACLs. Other methods should adopt this if they turn out to be heavily
          * used/slow.
          */
-        Map<ObjectIdentity, Acl> acls = aclService
-            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        Map<ObjectIdentity, Acl> acls;
+        try {
+            acls = aclService.readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        } catch ( NotFoundException e ) {
+            acls = Collections.emptyMap();
+        }
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
-            boolean p = SecurityUtil.isPrivate( a );
+            boolean p = a != null && SecurityUtil.isPrivate( a );
             result.put( objectIdentities.get( oi ), p );
         }
         return result;
@@ -120,12 +124,16 @@ public class SecurityServiceImpl implements SecurityService {
 
         if ( objectIdentities.isEmpty() ) return result;
 
-        Map<ObjectIdentity, Acl> acls = aclService
-            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        Map<ObjectIdentity, Acl> acls;
+        try {
+            acls = aclService.readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        } catch ( NotFoundException e ) {
+            acls = Collections.emptyMap();
+        }
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
-            boolean p = SecurityUtil.isShared( a );
+            boolean p = a != null && SecurityUtil.isShared( a );
             result.put( objectIdentities.get( oi ), p );
         }
         return result;
@@ -481,13 +489,19 @@ public class SecurityServiceImpl implements SecurityService {
          * Take advantage of fast bulk loading of ACLs. Other methods sohuld adopt this if they turn out to be heavily
          * used/slow.
          */
-        Map<ObjectIdentity, Acl> acls = aclService
-            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        Map<ObjectIdentity, Acl> acls;
+        try {
+            acls = aclService.readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        } catch ( NotFoundException e ) {
+            acls = Collections.emptyMap();
+        }
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
-            Sid owner = a.getOwner();
-            result.put( objectIdentities.get( oi ), owner );
+            if ( a != null ) {
+                Sid owner = a.getOwner();
+                result.put( objectIdentities.get( oi ), owner );
+            }
         }
         return result;
     }
@@ -1105,13 +1119,17 @@ public class SecurityServiceImpl implements SecurityService {
             sids.add( sid );
         }
 
-        Map<ObjectIdentity, Acl> acls = aclService
-            .readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        Map<ObjectIdentity, Acl> acls;
+        try {
+            acls = aclService.readAclsById( new Vector<>( objectIdentities.keySet() ) );
+        } catch ( NotFoundException e ) {
+            acls = Collections.emptyMap();
+        }
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
             try {
-                result.put( objectIdentities.get( oi ), a.isGranted( requiredPermissions, sids, true ) );
+                result.put( objectIdentities.get( oi ), a != null && a.isGranted( requiredPermissions, sids, true ) );
             } catch ( NotFoundException ignore ) {
             }
         }

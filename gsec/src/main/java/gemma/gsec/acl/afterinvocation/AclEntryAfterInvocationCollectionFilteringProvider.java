@@ -131,7 +131,12 @@ public class AclEntryAfterInvocationCollectionFilteringProvider extends org.spri
         boolean[] perms = new boolean[domainObjects.size()];
         List<Sid> sids = this.sidRetrievalStrategy.getSids( authentication );
         List<ObjectIdentity> ois = getObjectIdentities( domainObjects );
-        Map<ObjectIdentity, Acl> aclsById = aclService.readAclsById( ois );
+        Map<ObjectIdentity, Acl> aclsById;
+        try {
+            aclsById = aclService.readAclsById( ois );
+        } catch ( NotFoundException e ) {
+            aclsById = Collections.emptyMap();
+        }
         int i = 0;
         for ( ObjectIdentity oi : ois ) {
             Acl acl = aclsById.get( oi );
