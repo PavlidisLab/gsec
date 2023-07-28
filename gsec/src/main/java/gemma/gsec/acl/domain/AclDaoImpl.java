@@ -17,7 +17,6 @@ package gemma.gsec.acl.domain;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.FlushMode;
-import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.criterion.Criterion;
@@ -62,15 +61,19 @@ public class AclDaoImpl implements AclDao {
 
     @Override
     public AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, boolean entriesInheriting ) {
+        Assert.isInstanceOf( AclSid.class, sid );
         AclObjectIdentity aoi = new AclObjectIdentity( type, ( Long ) identifier );
         aoi.setOwnerSid( sid );
         aoi.setEntriesInheriting( entriesInheriting );
         sessionFactory.getCurrentSession().persist( aoi );
+        log.trace( String.format( "Created %s", aoi ) );
         return aoi;
     }
 
     @Override
     public void delete( ObjectIdentity objectIdentity, boolean deleteChildren ) {
+        Assert.isInstanceOf( AclObjectIdentity.class, objectIdentity );
+
         if ( deleteChildren ) {
             List<ObjectIdentity> c = findChildren( objectIdentity );
             for ( ObjectIdentity cc : c ) {
@@ -78,18 +81,16 @@ public class AclDaoImpl implements AclDao {
             }
         }
 
-        // cascades to entries.
-        assert objectIdentity instanceof AclObjectIdentity;
-
         // must do this first...
         this.evictFromCache( objectIdentity );
 
         sessionFactory.getCurrentSession().delete( objectIdentity );
-
+        log.trace( String.format( "Deleted %s", objectIdentity ) );
     }
 
     @Override
     public void delete( Sid sid ) {
+        Assert.isInstanceOf( AclSid.class, sid );
 
         Sid toDelete = this.find( sid );
 
@@ -101,8 +102,8 @@ public class AclDaoImpl implements AclDao {
         // delete any objectidentities owned
         Session session = sessionFactory.getCurrentSession();
         List<?> ownedOis = session
-            .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
-            .setParameter( "sid", toDelete ).list();
+                .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
+                .setParameter( "sid", toDelete ).list();
 
         if ( !ownedOis.isEmpty() ) {
             for ( Object oi : ownedOis ) {
@@ -113,7 +114,7 @@ public class AclDaoImpl implements AclDao {
 
         // delete any aclentries referring to this sid
         List<?> entries = session.createQuery( "select e from AclEntry e where e.sid = :sid" )
-            .setParameter( "sid", toDelete ).list();
+                .setParameter( "sid", toDelete ).list();
 
         for ( Object e : entries ) {
             session.delete( e );
@@ -125,39 +126,38 @@ public class AclDaoImpl implements AclDao {
 
     @Override
     public AclObjectIdentity find( ObjectIdentity oid ) {
-        List<?> r = sessionFactory.getCurrentSession()
-            .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
-            .setParameter( "t", oid.getType() ).setParameter( "i", oid.getIdentifier() ).list();
-        if ( r.isEmpty() ) return null;
+        Assert.isInstanceOf( AclObjectIdentity.class, oid );
+        return ( AclObjectIdentity ) sessionFactory.getCurrentSession()
+                .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
+                .setParameter( "t", oid.getType() )
+                .setParameter( "i", oid.getIdentifier() )
 
-        return ( AclObjectIdentity ) r.get( 0 );
+                .uniqueResult();
     }
 
     @Override
     public AclSid find( Sid sid ) {
+        Assert.isInstanceOf( AclSid.class, sid );
         if ( sid instanceof AclPrincipalSid ) {
             AclPrincipalSid p = ( AclPrincipalSid ) sid;
-            List<?> r = sessionFactory.getCurrentSession()
-                .createQuery( "from AclPrincipalSid where principal = :p" ).setParameter( "p", p.getPrincipal() )
-                .list();
-            if ( !r.isEmpty() ) {
-                return ( AclSid ) r.get( 0 );
-            }
-        } else {
+            return ( AclSid ) sessionFactory.getCurrentSession()
+                    .createQuery( "from AclPrincipalSid where principal = :p" )
+                    .setParameter( "p", p.getPrincipal() )
+                    .uniqueResult();
+        } else if ( sid instanceof AclGrantedAuthoritySid ) {
             AclGrantedAuthoritySid g = ( AclGrantedAuthoritySid ) sid;
-            List<?> r = sessionFactory.getCurrentSession()
-                .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
-                .setParameter( "g", g.getGrantedAuthority() ).list();
-            if ( !r.isEmpty() ) {
-                return ( AclSid ) r.get( 0 );
-            }
+            return ( AclSid ) sessionFactory.getCurrentSession()
+                    .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
+                    .setParameter( "g", g.getGrantedAuthority() )
+                    .uniqueResult();
+        } else {
+            throw new IllegalArgumentException( "Unsupported ACL SID type: " + sid.getClass() );
         }
-        return null;
     }
 
     @Override
     public List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity ) {
-
+        Assert.isInstanceOf( AclObjectIdentity.class, parentIdentity );
         Assert.notNull( parentIdentity, "ParentIdentity cannot be null" );
 
         ObjectIdentity oi = this.find( parentIdentity );
@@ -168,17 +168,18 @@ public class AclDaoImpl implements AclDao {
 
         //noinspection unchecked
         return sessionFactory.getCurrentSession()
-            .createQuery( "from AclObjectIdentity o where o.parentObject = :po" )
-            .setParameter( "po", parentIdentity ).list();
+                .createQuery( "from AclObjectIdentity o where o.parentObject = :po" )
+                .setParameter( "po", parentIdentity ).list();
     }
 
     @Override
     public AclSid findOrCreate( Sid sid ) {
+        Assert.isInstanceOf( AclSid.class, sid );
+
         AclSid fsid = this.find( sid );
 
         if ( fsid != null ) return fsid;
 
-        assert sid instanceof AclSid;
         sessionFactory.getCurrentSession().persist( sid );
 
         return ( AclSid ) sid;
@@ -196,8 +197,10 @@ public class AclDaoImpl implements AclDao {
 
         Map<ObjectIdentity, Acl> result = new HashMap<>();
 
-        Set<ObjectIdentity> aclsToLoad = new HashSet<>();
+        Set<AclObjectIdentity> aclsToLoad = new HashSet<>();
         for ( ObjectIdentity oid : objects ) {
+            Assert.isInstanceOf( AclObjectIdentity.class, oid );
+
             if ( result.containsKey( oid ) ) {
                 continue;
             }
@@ -213,7 +216,7 @@ public class AclDaoImpl implements AclDao {
                 continue;
             }
 
-            aclsToLoad.add( oid );
+            aclsToLoad.add( ( AclObjectIdentity ) oid );
         }
 
         if ( !aclsToLoad.isEmpty() ) {
@@ -247,7 +250,7 @@ public class AclDaoImpl implements AclDao {
 
         // the ObjectIdentity might already be in the session.
         aclObjectIdentity = ( AclObjectIdentity ) sessionFactory.getCurrentSession()
-            .merge( aclObjectIdentity );
+                .merge( aclObjectIdentity );
 
         if ( acl.getParentAcl() != null ) {
 
@@ -300,7 +303,7 @@ public class AclDaoImpl implements AclDao {
 
         if ( aclObjectIdentity.getOwnerSid().getId() == null ) {
             aclObjectIdentity.setOwnerSid( requireNonNull( this.find( acl.getOwner() ),
-                String.format( "Failed to locate owner SID %s for %s", aclObjectIdentity.getOwnerSid(), aclObjectIdentity ) ) );
+                    String.format( "Failed to locate owner SID %s for %s", aclObjectIdentity.getOwnerSid(), aclObjectIdentity ) ) );
         }
 
         assert aclObjectIdentity.getOwnerSid() != null;
@@ -347,32 +350,33 @@ public class AclDaoImpl implements AclDao {
      *
      * @param objectIdentities a batch of OIs to fetch ACLs for.
      */
-    private Map<ObjectIdentity, Acl> loadAcls( final Collection<ObjectIdentity> objectIdentities ) {
+    private Map<ObjectIdentity, Acl> loadAcls( final Collection<AclObjectIdentity> objectIdentities ) {
         final Map<Serializable, Acl> results = new HashMap<>();
 
         // group by type so we can use in (...) clauses
         Map<String, Set<Serializable>> idsByType = new HashMap<>();
         for ( ObjectIdentity oi : objectIdentities ) {
             idsByType.computeIfAbsent( oi.getType(), k -> new HashSet<>() )
-                .add( oi.getIdentifier() );
+                    .add( oi.getIdentifier() );
         }
 
         Criterion[] clauses = new Criterion[idsByType.size()];
         int i = 0;
         for ( Map.Entry<String, Set<Serializable>> e : idsByType.entrySet() ) {
             clauses[i++] = Restrictions.and(
-                Restrictions.eq( "type", e.getKey() ),
-                Restrictions.in( "identifier", e.getValue() ) );
+                    Restrictions.eq( "type", e.getKey() ),
+                    Restrictions.in( "identifier", e.getValue() ) );
         }
 
         //noinspection unchecked
-        List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession().createCriteria( AclObjectIdentity.class )
-            // possibly has no entries yet, so left outer join?
-            .createAlias( "entries", "e", JoinType.LEFT_OUTER_JOIN )
-            .add( Restrictions.or( clauses ) )
-            .addOrder( Order.asc( "identifier" ) )
-            .addOrder( Order.asc( "e.aceOrder" ) )
-            .list();
+        List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession()
+                .createCriteria( AclObjectIdentity.class )
+                // possibly has no entries yet, so left outer join?
+                .createAlias( "entries", "e", JoinType.LEFT_OUTER_JOIN )
+                .add( Restrictions.or( clauses ) )
+                .addOrder( Order.asc( "identifier" ) )
+                .addOrder( Order.asc( "e.aceOrder" ) )
+                .list();
 
         // this is okay if we haven't added the objects yet.
         // if ( queryR.size() < objectIdentities.size() ) {
@@ -400,7 +404,7 @@ public class AclDaoImpl implements AclDao {
                         parentAcl = new AclImpl( parentObjectIdentity, aclAuthorizationStrategy, /* parent acl */null );
 
                         parentAcl.getEntries()
-                            .addAll( AclEntry.convert( new ArrayList<>( oi.getEntries() ), parentAcl ) );
+                                .addAll( AclEntry.convert( new ArrayList<>( oi.getEntries() ), parentAcl ) );
                     } else {
                         parentAcl = ( AclImpl ) cachedParent;
 
@@ -446,22 +450,20 @@ public class AclDaoImpl implements AclDao {
         Assert.notNull( acls, "ACLs are required" );
         Assert.notEmpty( objectIdentityIds, "Items to find now required" );
 
-        Query query = sessionFactory.getCurrentSession()
-            .createQuery( "from AclObjectIdentity where id in (:ids)" ).setParameterList( "ids", objectIdentityIds );
-
-        List<?> queryR = query.list();
+        //noinspection unchecked
+        List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession()
+                .createQuery( "from AclObjectIdentity where id in (:ids)" )
+                .setParameterList( "ids", objectIdentityIds )
+                .list();
 
         Set<Long> parentsToLookup = new HashSet<>();
-        for ( Object o : queryR ) {
-            AclObjectIdentity oi = ( AclObjectIdentity ) o;
-
-            if ( oi.getParentObject() != null ) {
-                assert !oi.getParentObject().getId().equals( oi.getId() );
-                parentsToLookup.add( oi.getParentObject().getId() );
+        for ( AclObjectIdentity o : queryR ) {
+            if ( o.getParentObject() != null ) {
+                assert !o.getParentObject().getId().equals( o.getId() );
+                parentsToLookup.add( o.getParentObject().getId() );
             }
-
-            Acl acl = new AclImpl( oi, aclAuthorizationStrategy, /* parentacl, to be filled in later */null );
-            acls.put( oi.getId(), acl );
+            Acl acl = new AclImpl( o, aclAuthorizationStrategy, /* parentacl, to be filled in later */null );
+            acls.put( o.getId(), acl );
         }
 
         /*
@@ -482,8 +484,8 @@ public class AclDaoImpl implements AclDao {
                 // this used to be an assertion, source of failures not clear...
                 if ( !acls.containsKey( aoi.getParentObject().getId() ) ) {
                     throw new IllegalStateException(
-                        "ACLs did not contain key for parent object identity of " + aoi + "( parent = " + aoi.getParentObject() + "); "
-                            + "ACLs being inspected: " + StringUtils.collectionToDelimitedString( acls.values(), "\n" ) );
+                            "ACLs did not contain key for parent object identity of " + aoi + "( parent = " + aoi.getParentObject() + "); "
+                                    + "ACLs being inspected: " + StringUtils.collectionToDelimitedString( acls.values(), "\n" ) );
                 }
                 // end assertion
 
