@@ -72,8 +72,14 @@
 		<property name="allowIfAllAbstainDecisions" value="false"/>
 		<constructor-arg name="decisionVoters">
 			<list>
-				<ref bean="securableEditVoter"/>
 				<ref bean="securableReadVoter"/>
+				<ref bean="securableEditVoter"/>
+				<ref bean="securableCollectionReadVoter"/>
+				<ref bean="securableCollectionEditVoter"/>
+				<ref bean="securableMapReadVoter"/>
+				<ref bean="securableMapEditVoter"/>
+				<ref bean="securableMapValueReadVoter"/>
+				<ref bean="securableMapValueEditVoter"/>
 				<ref bean="roleHierarchyVoter"/>
 				<bean class="org.springframework.security.access.vote.AuthenticatedVoter"/>
 				<!-- needed for the use of @Pre.. -->
@@ -85,7 +91,6 @@
 						</bean>
 					</constructor-arg>
 				</bean>
-				<ref local="securableCollectionReadVoter"/>
 			</list>
 		</constructor-arg>
 	</bean>
@@ -136,6 +141,76 @@
 			<array>
 				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
 				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.READ"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
+
+	<bean id="securableCollectionEditVoter" class="gemma.gsec.acl.voter.AclEntryCollectionVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_COLLECTION_EDIT"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.WRITE"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
+
+	<bean id="securableMapReadVoter" class="gemma.gsec.acl.voter.AclEntryMapVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_MAP_READ"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.READ"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
+
+	<bean id="securableMapEditVoter" class="gemma.gsec.acl.voter.AclEntryMapVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_MAP_EDIT"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.WRITE"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
+
+	<bean id="securableMapValueReadVoter" class="gemma.gsec.acl.voter.AclEntryMapValueVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_MAP_VALUE_READ"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.READ"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
+
+	<bean id="securableMapValueEditVoter" class="gemma.gsec.acl.voter.AclEntryMapValueVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_MAP_VALUE_EDIT"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.WRITE"/>
 			</array>
 		</constructor-arg>
 		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
