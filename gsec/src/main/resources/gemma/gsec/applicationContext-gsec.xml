@@ -60,6 +60,8 @@
 
 	<bean id="objectIdentityRetrievalStrategy" class="gemma.gsec.acl.ObjectIdentityRetrievalStrategyImpl"/>
 
+	<bean id="objectTransientnessRetrievalStrategy" class="gemma.gsec.acl.ObjectTransientnessRetrievalStrategyImpl"/>
+
 	<!-- Customized to use the roleHierarchy and our AclSids (otherwise we wouldn't need to declare this) -->
 	<bean id="sidRetrievalStrategy" class="gemma.gsec.acl.AclSidRetrievalStrategyImpl">
 		<constructor-arg>
@@ -103,10 +105,24 @@
 		<property name="rolePrefix" value="GROUP_"/>
 	</bean>
 
+	<bean id="securableReadVoter" class="gemma.gsec.acl.voter.AclEntryVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_READ"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.READ"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
+
 
 	<!-- Voter that can be applied to any method that takes a securable as an argument (NOT on the return value, this is checked
 		before the call) -->
-	<bean id="securableEditVoter" class="org.springframework.security.acls.AclEntryVoter">
+	<bean id="securableEditVoter" class="gemma.gsec.acl.voter.AclEntryVoter">
 		<constructor-arg ref="aclService"/>
 		<constructor-arg value="ACL_SECURABLE_EDIT"/>
 		<constructor-arg>
@@ -120,18 +136,20 @@
 		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
 	</bean>
 
-	<bean id="securableReadVoter" class="org.springframework.security.acls.AclEntryVoter">
+	<bean id="securableCreateOrEditVoter" class="gemma.gsec.acl.voter.AclEntryVoter">
 		<constructor-arg ref="aclService"/>
-		<constructor-arg value="ACL_SECURABLE_READ"/>
+		<constructor-arg value="ACL_SECURABLE_CREATE_OR_EDIT"/>
 		<constructor-arg>
 			<array>
 				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
-				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.READ"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.WRITE"/>
 			</array>
 		</constructor-arg>
 		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
 		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
 		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+		<property name="objectTransientnessRetrievalStrategy" ref="objectTransientnessRetrievalStrategy"/>
+		<property name="grantOnTransient" value="true"/>
 	</bean>
 
 	<bean id="securableCollectionReadVoter" class="gemma.gsec.acl.voter.AclEntryCollectionVoter">
@@ -162,6 +180,22 @@
 		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
 	</bean>
 
+	<bean id="securableCollectionCreateOrEditVoter" class="gemma.gsec.acl.voter.AclEntryCollectionVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_COLLECTION_CREATE_OR_EDIT"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.WRITE"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+		<property name="objectTransientnessRetrievalStrategy" ref="objectTransientnessRetrievalStrategy"/>
+		<property name="grantOnTransient" value="true"/>
+	</bean>
+
 	<bean id="securableMapReadVoter" class="gemma.gsec.acl.voter.AclEntryMapVoter">
 		<constructor-arg ref="aclService"/>
 		<constructor-arg value="ACL_SECURABLE_MAP_READ"/>
@@ -190,6 +224,22 @@
 		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
 	</bean>
 
+	<bean id="securableMapCreateOrEditVoter" class="gemma.gsec.acl.voter.AclEntryMapVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_MAP_CREATE_OR_EDIT"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.WRITE"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+		<property name="objectTransientnessRetrievalStrategy" ref="objectTransientnessRetrievalStrategy"/>
+		<property name="grantOnTransient" value="true"/>
+	</bean>
+
 	<bean id="securableMapValueReadVoter" class="gemma.gsec.acl.voter.AclEntryMapValueVoter">
 		<constructor-arg ref="aclService"/>
 		<constructor-arg value="ACL_SECURABLE_MAP_VALUE_READ"/>
@@ -216,6 +266,22 @@
 		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
 		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
 		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
+
+	<bean id="securableMapValueCreateOrEditVoter" class="gemma.gsec.acl.voter.AclEntryMapValueVoter">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg value="ACL_SECURABLE_MAP_VALUE_CREATE_OR_EDIT"/>
+		<constructor-arg>
+			<array>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.WRITE"/>
+			</array>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+		<property name="objectTransientnessRetrievalStrategy" ref="objectTransientnessRetrievalStrategy"/>
+		<property name="grantOnTransient" value="true"/>
 	</bean>
 
 	<!-- Check: 'GROUP_RUN_AS_' guys are so we can allow some exposed methods to be run by users with lower privileges - such

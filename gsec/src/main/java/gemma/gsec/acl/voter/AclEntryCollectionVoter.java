@@ -18,7 +18,7 @@
  */
 package gemma.gsec.acl.voter;
 
-import gemma.gsec.acl.domain.AclService;
+import gemma.gsec.acl.ObjectTransientnessRetrievalStrategy;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -51,6 +51,9 @@ import java.util.stream.Collectors;
  * members; otherwise DENIED. ABSTAIN will be returned if it isn't a Collection in the first place. Null collection
  * members are ignored. As with the superclass, an exception will be thrown if the collection members are not of the set
  * processDomainObjectClass type.
+ * <p>
+ * Like {@link AclEntryVoter}, this strategy also supports granting access to transient objects if a {@link ObjectTransientnessRetrievalStrategy}
+ * is set and this voter is explicitly set to grant access to transient objects with {@link #setGrantOnTransient}.
  *
  * @author paul
  * @version $Id: AclCollectionEntryVoter.java,v 1.6 2013/09/14 16:56:03 paul Exp $
@@ -67,6 +70,8 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
 
     private SidRetrievalStrategy sidRetrievalStrategy;
     private ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy;
+    private ObjectTransientnessRetrievalStrategy objectTransientnessRetrievalStrategy;
+    private boolean grantOnTransient = false;
 
     public AclEntryCollectionVoter( AclService aclService, String processConfigAttribute, Permission[] requirePermission ) {
         this.aclService = aclService;
@@ -99,6 +104,21 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
 
             if ( coll == null ) {
                 return ACCESS_ABSTAIN;
+            }
+
+            if ( objectTransientnessRetrievalStrategy != null ) {
+                if ( grantOnTransient ) {
+                    // simply rewrite the collection to exclude transient objects, that will make the voter only
+                    // consider non-transient objects in its decision
+                    coll = coll.stream()
+                        .filter( obj -> !objectTransientnessRetrievalStrategy.isObjectTransient( obj ) )
+                        .collect( Collectors.toList() );
+                } else {
+                    // replace transient objects with nulls so that the voter will abstain on those elements
+                    coll = coll.stream()
+                        .map( obj -> objectTransientnessRetrievalStrategy.isObjectTransient( obj ) ? null : obj )
+                        .collect( Collectors.toList() );
+                }
             }
 
             List<ObjectIdentity> ids = coll.stream()
@@ -152,6 +172,20 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
 
     public void setObjectIdentityRetrievalStrategy( ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy ) {
         this.objectIdentityRetrievalStrategy = objectIdentityRetrievalStrategy;
+    }
+
+    /**
+     * Set the strategy to retrieve the transientness of an object.
+     */
+    public void setObjectTransientnessRetrievalStrategy( ObjectTransientnessRetrievalStrategy objectTransientnessRetrievalStrategy ) {
+        this.objectTransientnessRetrievalStrategy = objectTransientnessRetrievalStrategy;
+    }
+
+    /**
+     * Set whether to grant access to transient objects or simply abstain.
+     */
+    public void setGrantOnTransient( boolean grantOnTransient ) {
+        this.grantOnTransient = grantOnTransient;
     }
 
     /**
