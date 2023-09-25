@@ -23,12 +23,16 @@ public class ApplicationContextTest extends AbstractJUnit4SpringContextTests {
     public void testSupportedSecuredConfigAttributes() {
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_READ" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_EDIT" ) ) );
+        assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_EDIT_IGNORE_TRANSIENT" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_COLLECTION_READ" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_COLLECTION_EDIT" ) ) );
+        assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_COLLECTION_EDIT_IGNORE_TRANSIENT" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_MAP_READ" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_MAP_EDIT" ) ) );
+        assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_MAP_EDIT_IGNORE_TRANSIENT" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_MAP_VALUE_READ" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_MAP_VALUE_EDIT" ) ) );
+        assertTrue( accessDecisionManager.supports( new SecurityConfig( "ACL_SECURABLE_MAP_VALUE_EDIT_IGNORE_TRANSIENT" ) ) );
         assertFalse( accessDecisionManager.supports( new SecurityConfig( "ACL_FOO" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_USER" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_ADMIN" ) ) );

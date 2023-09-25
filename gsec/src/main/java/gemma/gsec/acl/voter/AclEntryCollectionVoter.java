@@ -27,8 +27,10 @@ import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.access.vote.AbstractAclVoter;
 import org.springframework.security.acls.model.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.Assert;
 import org.springframework.util.TypeUtils;
 
+import javax.annotation.Nullable;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -52,8 +54,9 @@ import java.util.stream.Collectors;
  * members are ignored. As with the superclass, an exception will be thrown if the collection members are not of the set
  * processDomainObjectClass type.
  * <p>
- * Like {@link AclEntryVoter}, this strategy also supports granting access to transient objects if a {@link ObjectTransientnessRetrievalStrategy}
- * is set and this voter is explicitly set to grant access to transient objects with {@link #setGrantOnTransient}.
+ * Like {@link AclEntryVoter}, this voter also supports granting access to transient objects if a {@link ObjectTransientnessRetrievalStrategy}
+ * is set. By default, the voter will abstain, but you can set {@link #setGrantOnTransient(boolean)} to grant. Methods
+ * that allows transient instance have to append {@link AclEntryVoter#IGNORE_TRANSIENT_SUFFIX}.
  *
  * @author paul
  * @version $Id: AclCollectionEntryVoter.java,v 1.6 2013/09/14 16:56:03 paul Exp $
@@ -66,22 +69,33 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
 
     private final AclService aclService;
     private final String processConfigAttribute;
+    private final String processConfigAttributeIgnoreTransient;
     private final Permission[] requirePermission;
 
     private SidRetrievalStrategy sidRetrievalStrategy;
     private ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy;
+    @Nullable
     private ObjectTransientnessRetrievalStrategy objectTransientnessRetrievalStrategy;
     private boolean grantOnTransient = false;
 
     public AclEntryCollectionVoter( AclService aclService, String processConfigAttribute, Permission[] requirePermission ) {
+        Assert.notNull( processConfigAttribute, "A processConfigAttribute is mandatory" );
+        Assert.notNull( aclService, "An AclService is mandatory" );
+
+        if ( requirePermission.length == 0 ) {
+            throw new IllegalArgumentException( "One or more requirePermission entries is mandatory" );
+        }
+
         this.aclService = aclService;
         this.processConfigAttribute = processConfigAttribute;
+        this.processConfigAttributeIgnoreTransient = processConfigAttribute + AclEntryVoter.IGNORE_TRANSIENT_SUFFIX;
         this.requirePermission = requirePermission;
     }
 
     @Override
     public boolean supports( ConfigAttribute attribute ) {
-        return attribute.getAttribute() != null && attribute.getAttribute().equals( processConfigAttribute );
+        return processConfigAttribute.equals( attribute.getAttribute() )
+            || ( objectTransientnessRetrievalStrategy != null && processConfigAttributeIgnoreTransient.equals( attribute.getAttribute() ) );
     }
 
     /*
@@ -106,7 +120,8 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
                 return ACCESS_ABSTAIN;
             }
 
-            if ( objectTransientnessRetrievalStrategy != null ) {
+            if ( objectTransientnessRetrievalStrategy != null
+                && processConfigAttributeIgnoreTransient.equals( attr.getAttribute() ) ) {
                 if ( grantOnTransient ) {
                     // simply rewrite the collection to exclude transient objects, that will make the voter only
                     // consider non-transient objects in its decision
@@ -177,7 +192,7 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
     /**
      * Set the strategy to retrieve the transientness of an object.
      */
-    public void setObjectTransientnessRetrievalStrategy( ObjectTransientnessRetrievalStrategy objectTransientnessRetrievalStrategy ) {
+    public void setObjectTransientnessRetrievalStrategy( @Nullable ObjectTransientnessRetrievalStrategy objectTransientnessRetrievalStrategy ) {
         this.objectTransientnessRetrievalStrategy = objectTransientnessRetrievalStrategy;
     }
 

@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.security.access.AccessDecisionVoter;
 import org.springframework.security.access.ConfigAttribute;
+import org.springframework.security.access.SecurityConfig;
 import org.springframework.security.acls.domain.BasePermission;
 import org.springframework.security.acls.domain.ObjectIdentityRetrievalStrategyImpl;
 import org.springframework.security.acls.domain.SidRetrievalStrategyImpl;
@@ -26,6 +27,7 @@ import java.util.Collections;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
@@ -62,7 +64,7 @@ public class AclEntryCollectionVoterTest {
 
     private AclService aclService;
     private AclEntryCollectionVoter voter;
-    private ConfigAttribute ca;
+    private ConfigAttribute ca, caIgnoreTransient;
     private Authentication auth;
 
     @Before
@@ -72,8 +74,8 @@ public class AclEntryCollectionVoterTest {
         voter.setObjectIdentityRetrievalStrategy( new ObjectIdentityRetrievalStrategyImpl() );
         voter.setSidRetrievalStrategy( new SidRetrievalStrategyImpl() );
         voter.setProcessDomainObjectClass( Securable.class );
-        ca = mock( ConfigAttribute.class );
-        when( ca.getAttribute() ).thenReturn( "ACL_SECURABLE_COLLECTION_READ" );
+        ca = new SecurityConfig( "ACL_SECURABLE_COLLECTION_READ" );
+        caIgnoreTransient = new SecurityConfig( "ACL_SECURABLE_COLLECTION_READ_IGNORE_TRANSIENT" );
         auth = new TestingAuthenticationToken( "bob", "1234" );
     }
 
@@ -130,8 +132,19 @@ public class AclEntryCollectionVoterTest {
         voter.setGrantOnTransient( true );
         Collection<?> collection = Collections.singletonList( new Model( null ) );
         Method method = MyService.class.getMethod( "test", Collection.class );
-        int result = voter.vote( auth, new SimpleMethodInvocation( null, method, collection ), Collections.singletonList( ca ) );
+        int result = voter.vote( auth, new SimpleMethodInvocation( null, method, collection ), Collections.singletonList( caIgnoreTransient ) );
         assertEquals( AccessDecisionVoter.ACCESS_GRANTED, result );
+    }
+
+    @Test
+    public void testErrorOnCollectionContainingTransientObjectWhenAttributeIsMissing() throws NoSuchMethodException {
+        voter.setObjectTransientnessRetrievalStrategy( new ObjectTransientnessRetrievalStrategyImpl() );
+        voter.setGrantOnTransient( true );
+        Collection<?> collection = Collections.singletonList( new Model( null ) );
+        Method method = MyService.class.getMethod( "test", Collection.class );
+        Assertions.assertThatThrownBy( () -> voter.vote( auth, new SimpleMethodInvocation( null, method, collection ), Collections.singleton( ca ) ) )
+            .isInstanceOf( IllegalArgumentException.class )
+            .hasMessageContaining( "getId() is required to return a non-null value" );
     }
 
 
@@ -141,16 +154,13 @@ public class AclEntryCollectionVoterTest {
         voter.setGrantOnTransient( false );
         Collection<?> collection = Collections.singletonList( new Model( null ) );
         Method method = MyService.class.getMethod( "test", Collection.class );
-        int result = voter.vote( auth, new SimpleMethodInvocation( null, method, collection ), Collections.singletonList( ca ) );
+        int result = voter.vote( auth, new SimpleMethodInvocation( null, method, collection ), Collections.singletonList( caIgnoreTransient ) );
         assertEquals( AccessDecisionVoter.ACCESS_ABSTAIN, result );
     }
 
     @Test
-    public void testErrorOnCollectionContainingTransientObjectIfNoStrategyIsSet() throws NoSuchMethodException {
-        Collection<?> collection = Collections.singletonList( new Model( null ) );
-        Method method = MyService.class.getMethod( "test", Collection.class );
-        Assertions.assertThatThrownBy( () -> voter.vote( auth, new SimpleMethodInvocation( null, method, collection ), Collections.singletonList( ca ) ) )
-            .isInstanceOf( IllegalArgumentException.class )
-            .hasMessageContaining( "getId() is required to return a non-null value" );
+    public void testNoSupportForIgnoringTransientIfNoStrategyIsSet() {
+        voter.setObjectTransientnessRetrievalStrategy( null );
+        assertFalse( voter.supports( caIgnoreTransient ) );
     }
 }

@@ -7,6 +7,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.security.access.ConfigAttribute;
+import org.springframework.security.access.SecurityConfig;
 import org.springframework.security.acls.domain.BasePermission;
 import org.springframework.security.acls.domain.ObjectIdentityRetrievalStrategyImpl;
 import org.springframework.security.acls.domain.SidRetrievalStrategyImpl;
@@ -20,14 +21,14 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class AclEntryVoterTest {
 
     private AclService aclService;
     private AclEntryVoter voter;
-    private ConfigAttribute ca;
+    private ConfigAttribute ca, caIgnoreTransient;
     private Authentication auth;
 
     public static class Model implements Securable {
@@ -59,8 +60,8 @@ public class AclEntryVoterTest {
         voter.setObjectIdentityRetrievalStrategy( new ObjectIdentityRetrievalStrategyImpl() );
         voter.setSidRetrievalStrategy( new SidRetrievalStrategyImpl() );
         voter.setProcessDomainObjectClass( Securable.class );
-        ca = mock( ConfigAttribute.class );
-        when( ca.getAttribute() ).thenReturn( "ACL_SECURABLE_READ" );
+        ca = new SecurityConfig( "ACL_SECURABLE_READ" );
+        caIgnoreTransient = new SecurityConfig( "ACL_SECURABLE_READ_IGNORE_TRANSIENT" );
         auth = new TestingAuthenticationToken( "bob", "1234" );
     }
 
@@ -69,7 +70,17 @@ public class AclEntryVoterTest {
         voter.setObjectTransientnessRetrievalStrategy( new ObjectTransientnessRetrievalStrategyImpl() );
         voter.setGrantOnTransient( true );
         Method method = MyService.class.getMethod( "test", Model.class );
-        assertEquals( AclEntryVoter.ACCESS_GRANTED, voter.vote( auth, new SimpleMethodInvocation( null, method, new Model( null ) ), Collections.singleton( ca ) ) );
+        assertEquals( AclEntryVoter.ACCESS_GRANTED, voter.vote( auth, new SimpleMethodInvocation( null, method, new Model( null ) ), Collections.singleton( caIgnoreTransient ) ) );
+    }
+
+    @Test
+    public void testErrorOnTransientObjectWhenAttributeIsMissing() throws NoSuchMethodException {
+        voter.setObjectTransientnessRetrievalStrategy( new ObjectTransientnessRetrievalStrategyImpl() );
+        voter.setGrantOnTransient( true );
+        Method method = MyService.class.getMethod( "test", Model.class );
+        Assertions.assertThatThrownBy( () -> voter.vote( auth, new SimpleMethodInvocation( null, method, new Model( null ) ), Collections.singleton( ca ) ) )
+            .isInstanceOf( IllegalArgumentException.class )
+            .hasMessageContaining( "getId() is required to return a non-null value" );
     }
 
     @Test
@@ -77,15 +88,12 @@ public class AclEntryVoterTest {
         voter.setObjectTransientnessRetrievalStrategy( new ObjectTransientnessRetrievalStrategyImpl() );
         voter.setGrantOnTransient( false );
         Method method = MyService.class.getMethod( "test", Model.class );
-        assertEquals( AclEntryVoter.ACCESS_ABSTAIN, voter.vote( auth, new SimpleMethodInvocation( null, method, new Model( null ) ), Collections.singleton( ca ) ) );
+        assertEquals( AclEntryVoter.ACCESS_ABSTAIN, voter.vote( auth, new SimpleMethodInvocation( null, method, new Model( null ) ), Collections.singleton( caIgnoreTransient ) ) );
     }
 
     @Test
-    public void testErrorOnTransientIfNoStrategyIsSet() throws NoSuchMethodException {
+    public void testNoSupportForIgnoringTransientIfNoStrategyIsSet() {
         voter.setObjectTransientnessRetrievalStrategy( null );
-        Method method = MyService.class.getMethod( "test", Model.class );
-        Assertions.assertThatThrownBy( () -> voter.vote( auth, new SimpleMethodInvocation( null, method, new Model( null ) ), Collections.singleton( ca ) ) )
-            .isInstanceOf( IllegalArgumentException.class )
-            .hasMessageContaining( "getId() is required to return a non-null value" );
+        assertFalse( voter.supports( caIgnoreTransient ) );
     }
 }
