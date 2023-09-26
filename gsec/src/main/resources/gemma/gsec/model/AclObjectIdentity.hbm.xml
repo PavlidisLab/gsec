@@ -19,10 +19,10 @@
       <property name="entriesInheriting" type="java.lang.Boolean">
          <column name="ENTRIES_INHERITING" not-null="true" unique="false" sql-type="TINYINT"/>
       </property>
-      <many-to-one name="ownerSid" class="gemma.gsec.acl.domain.AclSid" lazy="false" fetch="join">
+      <many-to-one name="ownerSid" class="gemma.gsec.acl.domain.AclSid" lazy="false" fetch="select">
          <column name="OWNER_SID_FK" not-null="true" sql-type="BIGINT"/>
       </many-to-one>
-      <many-to-one name="parentObject" class="gemma.gsec.acl.domain.AclObjectIdentity" lazy="false" fetch="join">
+      <many-to-one name="parentObject" class="gemma.gsec.acl.domain.AclObjectIdentity" lazy="false" fetch="select">
          <column name="PARENT_OBJECT_FK" not-null="false" sql-type="BIGINT"/>
       </many-to-one>
       <!-- this is the only mutable part -->
