@@ -117,6 +117,18 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
         return this.granting;
     }
 
+    public void setGranting( boolean granting ) {
+        this.granting = granting;
+    }
+
+    public int getMask() {
+        return mask;
+    }
+
+    public void setMask( int mask ) {
+        this.mask = mask;
+    }
+
     @Override
     public Acl getAcl() {
         return this.acl;

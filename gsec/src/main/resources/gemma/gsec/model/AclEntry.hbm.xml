@@ -5,21 +5,21 @@
 <hibernate-mapping>
    <class name="gemma.gsec.acl.domain.AclEntry" table="ACLENTRY">
       <cache usage="read-write"/>
-      <id name="id" type="java.lang.Long" unsaved-value="null" access="field">
+      <id name="id" type="java.lang.Long" unsaved-value="null">
          <column name="ID" sql-type="BIGINT"/>
          <generator class="native">
          </generator>
       </id>
-      <property name="granting" type="java.lang.Boolean" access="field">
+      <property name="granting" type="java.lang.Boolean">
          <column name="GRANTING" not-null="true" unique="false" sql-type="TINYINT"/>
       </property>
-      <property name="mask" type="java.lang.Integer" access="field">
+      <property name="mask" type="java.lang.Integer">
          <column name="MASK" not-null="true" unique="false" sql-type="INTEGER"/>
       </property>
-      <property name="aceOrder" type="java.lang.Integer" access="field">
+      <property name="aceOrder" type="java.lang.Integer">
          <column name="ACE_ORDER" not-null="true" unique="false" sql-type="INTEGER"/>
       </property>
-      <many-to-one name="sid" class="gemma.gsec.acl.domain.AclSid" lazy="false" fetch="join" access="field">
+      <many-to-one name="sid" class="gemma.gsec.acl.domain.AclSid" lazy="false" fetch="join">
          <column name="SID_FK" not-null="true" sql-type="BIGINT"/>
       </many-to-one>
    </class>
