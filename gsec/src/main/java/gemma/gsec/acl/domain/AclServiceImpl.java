@@ -27,9 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * @author paul
@@ -37,7 +40,7 @@ import java.util.Map;
  */
 public class AclServiceImpl implements AclService {
 
-    private static final Log log = LogFactory.getLog( AclServiceImpl.class );
+    private static final Log log = LogFactory.getLog( AclDaoImpl.class );
 
     private final AclDao aclDao;
 
@@ -48,52 +51,66 @@ public class AclServiceImpl implements AclService {
     @Override
     @Transactional
     public MutableAcl createAcl( ObjectIdentity objectIdentity ) throws AlreadyExistsException {
-        // Check this object identity hasn't already been persisted
-        if ( aclDao.find( objectIdentity ) != null ) {
-            Acl acl = this.readAclById( objectIdentity );
-            if ( acl != null ) {
-                log.warn( "Create called on object identity that already exists, and acl could be loaded; " + acl );
-                /*
-                 * This happens ... why? When we set a parent object earlier than needed?
-                 */
-                // return ( MutableAcl ) acl;
-            }
+        Assert.isInstanceOf( AclObjectIdentity.class, objectIdentity );
+
+        AclObjectIdentity aclObjectIdentity = ( AclObjectIdentity ) objectIdentity;
+
+        // Check this object identity hasn't already been persisted (fast) or there's already a type/identifier registered (slow)
+        if ( aclObjectIdentity.getId() != null || aclDao.findObjectIdentity( aclObjectIdentity ) != null ) {
             throw new AlreadyExistsException( "Object identity '" + objectIdentity + "' already exists in the database" );
         }
 
         // Need to retrieve the current principal, in order to know who "owns" this ACL (can be changed later on)
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        AclSid sid = new AclPrincipalSid( auth );
+        if ( aclObjectIdentity.getOwnerSid() == null ) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            AclPrincipalSid owner = new AclPrincipalSid( auth );
+            log.trace( String.format( "%s has no owner, assigning it to %s", aclObjectIdentity, owner ) );
+            aclObjectIdentity.setOwnerSid( owner );
+        }
+
+        // create the SID
+        if ( aclObjectIdentity.getOwnerSid().getId() == null ) {
+            log.trace( String.format( "Owner of %s does not have an ID, finding or creating it...", aclObjectIdentity ) );
+            aclObjectIdentity.setOwnerSid( aclDao.findOrCreateSid( aclObjectIdentity.getOwnerSid() ) );
+        }
+
+        // if the parent is identified by type/identifier, we have to retrieve it
+        // we don't create parent ACLs however
+        if ( aclObjectIdentity.getParentObject() != null && aclObjectIdentity.getParentObject().getId() == null ) {
+            log.trace( String.format( "Parent of %s does not have an ID, finding or creating it...", aclObjectIdentity ) );
+            aclObjectIdentity.setParentObject( requireNonNull( aclDao.findObjectIdentity( aclObjectIdentity.getParentObject() ),
+                "Could not find parent of " + aclObjectIdentity ) );
+        }
 
         // Create the acl_object_identity row
-        sid = aclDao.findOrCreate( sid );
-        String type = objectIdentity.getType();
-        objectIdentity = aclDao.createObjectIdentity( type, objectIdentity.getIdentifier(), sid, true );
+        objectIdentity = aclDao.createObjectIdentity( aclObjectIdentity );
 
-        Acl acl = this.readAclById( objectIdentity );
-
-        return ( MutableAcl ) acl;
+        return ( MutableAcl ) this.readAclById( objectIdentity );
     }
 
     @Override
     @Transactional
-    public void deleteAcl( ObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException {
-        objectIdentity = aclDao.find( objectIdentity );
-        if ( objectIdentity != null ) {
-            aclDao.delete( objectIdentity, deleteChildren );
-        }
+    public void deleteAcl( ObjectIdentity objectIdentity, boolean deleteChildren ) {
+        Assert.isInstanceOf( AclObjectIdentity.class, objectIdentity );
+        // ensure that the aoi is in the session and also handle deleting by type/identifier combo
+        AclObjectIdentity aclObjectIdentity = aclDao.findObjectIdentity( ( AclObjectIdentity ) objectIdentity );
+        Assert.notNull( aclObjectIdentity );
+        aclDao.deleteObjectIdentity( aclObjectIdentity, deleteChildren );
     }
 
     @Override
     @Transactional
     public void deleteSid( Sid sid ) {
-        aclDao.delete( sid );
+        Assert.isInstanceOf( AclSid.class, sid );
+        aclDao.deleteSid( ( AclSid ) sid );
     }
+
 
     @Override
     @Transactional(readOnly = true)
     public List<ObjectIdentity> findChildren( final ObjectIdentity parentIdentity ) {
-        return aclDao.findChildren( parentIdentity );
+        Assert.isInstanceOf( AclObjectIdentity.class, parentIdentity );
+        return new ArrayList<>( aclDao.findChildren( ( AclObjectIdentity ) parentIdentity ) );
     }
 
     @Override
@@ -124,7 +141,13 @@ public class AclServiceImpl implements AclService {
     @Transactional
     public MutableAcl updateAcl( final MutableAcl acl ) throws NotFoundException {
         Assert.notNull( acl.getId(), "Object Identity doesn't provide an identifier" );
-        aclDao.update( acl );
+        Assert.isInstanceOf( AclObjectIdentity.class, acl.getObjectIdentity() );
+        Assert.isInstanceOf( AclSid.class, acl.getOwner() );
+        if ( ( ( AclSid ) acl.getOwner() ).getId() == null ) {
+            log.trace( String.format( "Owner of %s does not have an ID, finding or creating it...", acl ) );
+            acl.setOwner( aclDao.findOrCreateSid( ( AclSid ) acl.getOwner() ) );
+        }
+        aclDao.updateObjectIdentity( ( AclObjectIdentity ) acl.getObjectIdentity(), acl );
         return acl;
     }
 

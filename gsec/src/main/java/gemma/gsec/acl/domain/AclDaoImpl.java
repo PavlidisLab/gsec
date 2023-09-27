@@ -16,21 +16,16 @@ package gemma.gsec.acl.domain;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.hibernate.FlushMode;
-import org.hibernate.Session;
+import org.hibernate.Hibernate;
 import org.hibernate.SessionFactory;
-import org.hibernate.criterion.Criterion;
-import org.hibernate.criterion.Order;
-import org.hibernate.criterion.Restrictions;
-import org.hibernate.sql.JoinType;
-import org.springframework.security.acls.domain.AclAuthorizationStrategy;
+import org.springframework.security.acls.domain.*;
 import org.springframework.security.acls.model.*;
+import org.springframework.security.util.FieldUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import javax.persistence.EntityNotFoundException;
-import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -51,48 +46,72 @@ public class AclDaoImpl implements AclDao {
 
     private final SessionFactory sessionFactory;
     private final AclAuthorizationStrategy aclAuthorizationStrategy;
-    private final AclCache aclCache;
+    private final PermissionGrantingStrategy permissionGrantingStrategy;
+    private final PermissionFactory permissionFactory = new DefaultPermissionFactory();
 
-    public AclDaoImpl( SessionFactory sessionFactory, AclAuthorizationStrategy aclAuthorizationStrategy, AclCache aclCache ) {
+    public AclDaoImpl( SessionFactory sessionFactory, AclAuthorizationStrategy aclAuthorizationStrategy, PermissionGrantingStrategy permissionGrantingStrategy ) {
         this.sessionFactory = sessionFactory;
         this.aclAuthorizationStrategy = aclAuthorizationStrategy;
-        this.aclCache = aclCache;
+        this.permissionGrantingStrategy = permissionGrantingStrategy;
     }
 
     @Override
-    public AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, boolean entriesInheriting ) {
-        Assert.isInstanceOf( AclSid.class, sid );
-        AclObjectIdentity aoi = new AclObjectIdentity( type, ( Long ) identifier );
-        aoi.setOwnerSid( sid );
-        aoi.setEntriesInheriting( entriesInheriting );
+    public AclObjectIdentity findObjectIdentity( AclObjectIdentity oid ) {
+        Assert.notNull( oid.getType() );
+        Assert.notNull( oid.getIdentifier() );
+        // fast path if we know the ID
+        if ( oid.getId() != null ) {
+            return ( AclObjectIdentity ) sessionFactory.getCurrentSession()
+                .get( AclObjectIdentity.class, oid.getId() );
+        }
+        return ( AclObjectIdentity ) sessionFactory.getCurrentSession()
+            .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
+            .setParameter( "t", oid.getType() )
+            .setParameter( "i", oid.getIdentifier() )
+            .uniqueResult();
+    }
+
+
+    @Override
+    public AclObjectIdentity createObjectIdentity( AclObjectIdentity aoi ) {
         sessionFactory.getCurrentSession().persist( aoi );
         log.trace( String.format( "Created %s", aoi ) );
         return aoi;
     }
 
     @Override
-    public void delete( ObjectIdentity objectIdentity, boolean deleteChildren ) {
-        Assert.isInstanceOf( AclObjectIdentity.class, objectIdentity );
-
+    public void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren ) {
         if ( deleteChildren ) {
-            List<ObjectIdentity> c = findChildren( objectIdentity );
-            for ( ObjectIdentity cc : c ) {
-                delete( cc, true );
-            }
+            deleteObjectIdentityAndChildren( objectIdentity, 0 );
+        } else if ( !hasChildren( objectIdentity ) ) {
+            sessionFactory.getCurrentSession().delete( objectIdentity );
+            log.trace( String.format( "Deleted %s", objectIdentity ) );
+        } else {
+            throw new ChildrenExistException( objectIdentity + " has children, it cannot be deleted unless deleteChildren is set to true or the children are removed beforehand." );
         }
+        sessionFactory.getCurrentSession().flush();
+    }
 
-        // must do this first...
-        this.evictFromCache( objectIdentity );
+    private boolean hasChildren( AclObjectIdentity aclObjectIdentity ) {
+        return ( Boolean ) sessionFactory.getCurrentSession()
+            .createQuery( "select count(*) > 0 from AclObjectIdentity where parentObject = :po" )
+            .setParameter( "po", aclObjectIdentity )
+            .uniqueResult();
+    }
 
+    private void deleteObjectIdentityAndChildren( AclObjectIdentity objectIdentity, int indentSize ) {
+        String indent = String.join( "", Collections.nCopies( indentSize, "\t" ) );
+        log.trace( String.format( indent + "Deleted %s", objectIdentity ) );
+        List<AclObjectIdentity> c = findChildren( objectIdentity );
+        for ( AclObjectIdentity cc : c ) {
+            deleteObjectIdentityAndChildren( cc, indentSize + 1 );
+        }
         sessionFactory.getCurrentSession().delete( objectIdentity );
-        log.trace( String.format( "Deleted %s", objectIdentity ) );
     }
 
     @Override
-    public void delete( Sid sid ) {
-        Assert.isInstanceOf( AclSid.class, sid );
-
-        Sid toDelete = this.find( sid );
+    public void deleteSid( AclSid sid ) {
+        Sid toDelete = this.findSid( sid );
 
         if ( toDelete == null ) {
             log.warn( "No such sid: " + sid );
@@ -100,90 +119,76 @@ public class AclDaoImpl implements AclDao {
         }
 
         // delete any objectidentities owned
-        Session session = sessionFactory.getCurrentSession();
-        List<?> ownedOis = session
-                .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
-                .setParameter( "sid", toDelete ).list();
+        //noinspection unchecked
+        List<AclObjectIdentity> ownedOis = sessionFactory.getCurrentSession()
+            .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
+            .setParameter( "sid", toDelete ).list();
 
         if ( !ownedOis.isEmpty() ) {
-            for ( Object oi : ownedOis ) {
-                this.evictFromCache( ( ObjectIdentity ) oi );
-                session.delete( oi );
+            for ( AclObjectIdentity oi : ownedOis ) {
+                sessionFactory.getCurrentSession().delete( oi );
             }
         }
 
         // delete any aclentries referring to this sid
-        List<?> entries = session.createQuery( "select e from AclEntry e where e.sid = :sid" )
-                .setParameter( "sid", toDelete ).list();
+        //noinspection unchecked
+        List<AclEntry> entries = sessionFactory.getCurrentSession()
+            .createQuery( "select e from AclEntry e where e.sid = :sid" )
+            .setParameter( "sid", toDelete ).list();
 
-        for ( Object e : entries ) {
-            session.delete( e );
+        for ( AclEntry e : entries ) {
+            sessionFactory.getCurrentSession().delete( e );
         }
 
-        session.delete( toDelete );
-
+        // now we can safely delete the sid
+        sessionFactory.getCurrentSession().delete( toDelete );
+        log.trace( "Delete: " + toDelete );
     }
 
     @Override
-    public AclObjectIdentity find( ObjectIdentity oid ) {
-        Assert.isInstanceOf( AclObjectIdentity.class, oid );
-        return ( AclObjectIdentity ) sessionFactory.getCurrentSession()
-                .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
-                .setParameter( "t", oid.getType() )
-                .setParameter( "i", oid.getIdentifier() )
-
-                .uniqueResult();
-    }
-
-    @Override
-    public AclSid find( Sid sid ) {
-        Assert.isInstanceOf( AclSid.class, sid );
+    public AclSid findSid( AclSid sid ) {
         if ( sid instanceof AclPrincipalSid ) {
             AclPrincipalSid p = ( AclPrincipalSid ) sid;
             return ( AclSid ) sessionFactory.getCurrentSession()
-                    .createQuery( "from AclPrincipalSid where principal = :p" )
-                    .setParameter( "p", p.getPrincipal() )
-                    .uniqueResult();
+                .createQuery( "from AclPrincipalSid where principal = :p" )
+                .setParameter( "p", p.getPrincipal() )
+                .uniqueResult();
         } else if ( sid instanceof AclGrantedAuthoritySid ) {
             AclGrantedAuthoritySid g = ( AclGrantedAuthoritySid ) sid;
             return ( AclSid ) sessionFactory.getCurrentSession()
-                    .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
-                    .setParameter( "g", g.getGrantedAuthority() )
-                    .uniqueResult();
+                .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
+                .setParameter( "g", g.getGrantedAuthority() )
+                .uniqueResult();
         } else {
             throw new IllegalArgumentException( "Unsupported ACL SID type: " + sid.getClass() );
         }
     }
 
     @Override
-    public List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity ) {
-        Assert.isInstanceOf( AclObjectIdentity.class, parentIdentity );
-        Assert.notNull( parentIdentity, "ParentIdentity cannot be null" );
-
-        ObjectIdentity oi = this.find( parentIdentity );
-
-        if ( oi == null ) {
-            throw new EntityNotFoundException( "Failed to find: " + parentIdentity );
-        }
-
-        //noinspection unchecked
-        return sessionFactory.getCurrentSession()
+    public List<AclObjectIdentity> findChildren( AclObjectIdentity parentIdentity ) {
+        // fast path if we know the ID
+        if ( parentIdentity.getId() != null ) {
+            //noinspection unchecked
+            return sessionFactory.getCurrentSession()
                 .createQuery( "from AclObjectIdentity o where o.parentObject = :po" )
-                .setParameter( "po", parentIdentity ).list();
+                .setParameter( "po", parentIdentity )
+                .list();
+        } else {
+            //noinspection unchecked
+            return sessionFactory.getCurrentSession()
+                .createQuery( "from AclObjectIdentity o where o.parentObject.type = :type and o.parentObject.identifier = :identifier" )
+                .setParameter( "type", parentIdentity.getType() )
+                .setParameter( "identifier", parentIdentity.getIdentifier() )
+                .list();
+        }
     }
 
     @Override
-    public AclSid findOrCreate( Sid sid ) {
-        Assert.isInstanceOf( AclSid.class, sid );
-
-        AclSid fsid = this.find( sid );
-
+    public AclSid findOrCreateSid( AclSid sid ) {
+        AclSid fsid = this.findSid( sid );
         if ( fsid != null ) return fsid;
-
         sessionFactory.getCurrentSession().persist( sid );
-
-        return ( AclSid ) sid;
-
+        return sid;
     }
 
     /**
@@ -195,310 +200,190 @@ public class AclDaoImpl implements AclDao {
     public Map<ObjectIdentity, Acl> readAclsById( List<ObjectIdentity> objects, List<Sid> sids ) {
         Assert.notEmpty( objects, "Objects to lookup required" );
 
-        Map<ObjectIdentity, Acl> result = new HashMap<>();
-
         Set<AclObjectIdentity> aclsToLoad = new HashSet<>();
+        Set<AclObjectIdentity> byId = new HashSet<>();
+        Map<String, Set<AclObjectIdentity>> byTypeAndIdentifier = new HashMap<>();
         for ( ObjectIdentity oid : objects ) {
             Assert.isInstanceOf( AclObjectIdentity.class, oid );
-
-            if ( result.containsKey( oid ) ) {
-                continue;
-            }
-
-            // Check we don't already have this ACL in the results
-
-            // Check cache for the present ACL entry
-            Acl acl = aclCache.getFromCache( oid );
-            // Ensure any cached element supports all the requested SIDs
-            // (they should always, as our base impl doesn't filter on SID)
-            if ( acl != null ) {
-                result.put( acl.getObjectIdentity(), acl );
-                continue;
-            }
-
-            aclsToLoad.add( ( AclObjectIdentity ) oid );
-        }
-
-        if ( !aclsToLoad.isEmpty() ) {
-            Map<ObjectIdentity, Acl> loadedBatch = loadAcls( aclsToLoad );
-
-            // Add loaded batch (all elements 100% initialized) to results
-            result.putAll( loadedBatch );
-
-            // Add the loaded batch to the cache
-            for ( Acl loadedAcl : loadedBatch.values() ) {
-                aclCache.putInCache( ( MutableAcl ) loadedAcl );
+            AclObjectIdentity aclOid = ( AclObjectIdentity ) oid;
+            if ( aclOid.getId() != null ) {
+                // load it from the first/second-level cache
+                aclsToLoad.add( ( AclObjectIdentity ) sessionFactory.getCurrentSession().load( AclObjectIdentity.class, aclOid.getId() ) );
+            } else {
+                // forced to fetch it manually
+                byTypeAndIdentifier.computeIfAbsent( oid.getType(), k -> new HashSet<>() )
+                    .add( ( AclObjectIdentity ) oid );
             }
         }
 
-        return result;
+        // Hibernate uses batch-fetching for proxies, and we've set batch-size in AclObjectIdentity.hbm.xml, so this
+        // should be relatively efficient
+        aclsToLoad.forEach( Hibernate::initialize );
+
+        for ( Map.Entry<String, Set<AclObjectIdentity>> entry : byTypeAndIdentifier.entrySet() ) {
+            //noinspection unchecked
+            aclsToLoad.addAll( sessionFactory.getCurrentSession()
+                .createQuery( "from AclObjectIdentity where type = :type and identifier in :ids" )
+                .setParameter( "type", entry.getKey() )
+                .setParameterList( "ids", entry.getValue().stream().map( AclObjectIdentity::getIdentifier ).sorted().distinct().collect( Collectors.toList() ) )
+                .list() );
+        }
+
+        // Add loaded batch (all elements 100% initialized) to results
+        return loadAcls( aclsToLoad );
     }
 
     /**
      * This is an important method, and one that causes problems in the default JDBC-based service from spring-security.
      */
     @Override
-    public void update( MutableAcl acl ) {
+    public void updateObjectIdentity( AclObjectIdentity aclObjectIdentity, Acl acl ) {
+        Assert.isInstanceOf( AclObjectIdentity.class, acl.getObjectIdentity() );
+        Assert.isInstanceOf( AclSid.class, acl.getOwner() );
         if ( log.isTraceEnabled() )
-            log.trace( ">>>>>>>>>> starting database update of acl for: " + acl.getObjectIdentity() );
-        /*
-         * This fixes problems with premature commits causing IDs to be erased on some entities.
-         */
-        sessionFactory.getCurrentSession().setFlushMode( FlushMode.COMMIT );
-
-        AclObjectIdentity aclObjectIdentity = convert( acl );
-
-        // the ObjectIdentity might already be in the session.
-        aclObjectIdentity = ( AclObjectIdentity ) sessionFactory.getCurrentSession()
-                .merge( aclObjectIdentity );
-
-        if ( acl.getParentAcl() != null ) {
-
-            if ( log.isTraceEnabled() )
-                log.trace( "       Updating ACL on parent: " + acl.getParentAcl().getObjectIdentity() );
-
-            update( ( MutableAcl ) acl.getParentAcl() );
-            aclObjectIdentity.setParentObject( convert( ( MutableAcl ) acl.getParentAcl() ) );
-            assert aclObjectIdentity.getParentObject() != null;
-        } else {
-            // should be impossible to go from non-null to null, but just in case ...
-            assert aclObjectIdentity.getParentObject() == null;
-        }
-
+            log.trace( ">>>>>>>>>> Starting database update of ACL for: " + acl.getObjectIdentity() );
+        updateObjectIdentity( aclObjectIdentity, acl, 0 );
+        // persist the changes immediately
         sessionFactory.getCurrentSession().update( aclObjectIdentity );
-
-        evictFromCache( aclObjectIdentity );
-
-        // children are left out, no big deal. Eviction more important.
-        this.aclCache.putInCache( convertToAcl( aclObjectIdentity ) );
-
+        sessionFactory.getCurrentSession().flush();
         if ( log.isTraceEnabled() )
-            log.trace( " >>>>>>>>>> Done with database update of acl for: " + acl.getObjectIdentity() );
+            log.trace( ">>>>>>>>>> Done with database update of ACL for: " + acl.getObjectIdentity() );
     }
 
-    /**
-     * @return synched-up and partly updated AclObjectIdentity
-     */
-    private AclObjectIdentity convert( MutableAcl acl ) {
-        assert acl instanceof AclImpl;
-        assert acl.getObjectIdentity() instanceof AclObjectIdentity;
+    private void updateObjectIdentity( AclObjectIdentity aclObjectIdentity, Acl acl, int indentSize ) {
+        Assert.isInstanceOf( AclObjectIdentity.class, acl.getObjectIdentity() );
+        Assert.isInstanceOf( AclSid.class, acl.getOwner() );
+        Assert.notNull( ( ( AclSid ) acl.getOwner() ).getId() );
+        Assert.isTrue( indentSize >= 0 );
 
-        // these come back with the ace_order filled in.
-        List<AccessControlEntry> entriesFromAcl = acl.getEntries();
+        String indent = String.join( "", Collections.nCopies( indentSize, "\t" ) );
 
-        // repopulate the ID of the SIDs. May not have any if this is a secured child.
-        if ( log.isTraceEnabled() && !entriesFromAcl.isEmpty() )
-            log.trace( "Preparing to update " + entriesFromAcl.size() + " aces on " + acl.getObjectIdentity() );
-        for ( AccessControlEntry ace : entriesFromAcl ) {
-            if ( log.isTraceEnabled() ) log.trace( ace );
-            AclSid sid = ( AclSid ) ace.getSid();
-            if ( sid.getId() == null ) {
-                AclEntry aace = ( AclEntry ) ace;
-                aace.setSid( this.findOrCreate( sid ) );
+        log.trace( indent + "Updating ACL on " + aclObjectIdentity );
+
+        // update sids and entries of the main object
+        if ( !Objects.equals( aclObjectIdentity.getOwnerSid(), acl.getOwner() ) ) {
+            if ( log.isTraceEnabled() ) {
+                log.trace( indent + String.format( "Owner of %s is being changed from %s to %s", aclObjectIdentity,
+                    aclObjectIdentity.getOwnerSid(), acl.getOwner() ) );
             }
         }
+        aclObjectIdentity.setOwnerSid( acl.getOwner() );
+        aclObjectIdentity.setEntriesInheriting( acl.isEntriesInheriting() );
 
-        // synched up with the ACL, partly
-        AclObjectIdentity aclObjectIdentity = ( AclObjectIdentity ) acl.getObjectIdentity();
-
-        if ( aclObjectIdentity.getOwnerSid().getId() == null ) {
-            aclObjectIdentity.setOwnerSid( requireNonNull( this.find( acl.getOwner() ),
-                    String.format( "Failed to locate owner SID %s for %s", aclObjectIdentity.getOwnerSid(), aclObjectIdentity ) ) );
+        int i = 0;
+        List<AclEntry> entriesFromAcl = new ArrayList<>( acl.getEntries().size() );
+        for ( AccessControlEntry accessControlEntry : acl.getEntries() ) {
+            AclEntry entry;
+            if ( accessControlEntry.getId() != null ) {
+                // this is cheap because it is already loaded
+                entry = ( AclEntry ) requireNonNull( sessionFactory.getCurrentSession().get( AclEntry.class, accessControlEntry.getId() ),
+                    "The following ACL entry count not be found: " + accessControlEntry );
+            } else {
+                entry = new AclEntry();
+            }
+            entry.setSid( ( AclSid ) acl.getOwner() );
+            entry.setMask( accessControlEntry.getPermission().getMask() );
+            entry.setGranting( accessControlEntry.isGranting() );
+            entry.setAceOrder( i++ );
+            entriesFromAcl.add( entry );
         }
 
-        assert aclObjectIdentity.getOwnerSid() != null;
+        // update the collection of entries.
+        aclObjectIdentity.getEntries().clear();
+        aclObjectIdentity.getEntries().addAll( entriesFromAcl );
 
-        /*
-         * Update the collection of entries.
-         */
-        Collection<AclEntry> entriesToUpdate = aclObjectIdentity.getEntries();
-        entriesToUpdate.clear();
-        for ( AccessControlEntry accessControlEntry : entriesFromAcl ) {
-            entriesToUpdate.add( ( AclEntry ) accessControlEntry );
+        // parent likely went from null -> non-null, update it
+        if ( acl.getParentAcl() != null ) {
+            if ( log.isTraceEnabled() )
+                log.trace( indent + "Updating ACL on parent: " + acl.getParentAcl().getObjectIdentity() );
+            AclObjectIdentity parentOi = ( AclObjectIdentity ) acl.getParentAcl().getObjectIdentity();
+            // recursively update the parents
+            updateObjectIdentity( parentOi, acl.getParentAcl(), indentSize + 1 );
+            aclObjectIdentity.setParentObject( parentOi );
+            assert aclObjectIdentity.getParentObject() != null;
         }
 
-        return aclObjectIdentity;
+        // parent went from non-null to null, unset it
+        else if ( aclObjectIdentity.getParentObject() != null ) {
+            if ( log.isTraceEnabled() )
+                log.trace( indent + "Unsetting parent ACL of: " + aclObjectIdentity );
+            aclObjectIdentity.setParentObject( null );
+        }
     }
 
     /**
-     * Does not check the cache;
-     */
-    private MutableAcl convertToAcl( AclObjectIdentity oi ) {
-        return new AclImpl( oi, aclAuthorizationStrategy, oi.getParentObject() != null ? convertToAcl( oi.getParentObject() ) : null );
-    }
-
-    /**
-     * ... including children, recursively.
-     */
-    private void evictFromCache( ObjectIdentity aclObjectIdentity ) {
-        Assert.notNull( aclObjectIdentity, "aclObjectIdentity cannot be null" );
-
-        this.aclCache.evictFromCache( aclObjectIdentity );
-        for ( ObjectIdentity c : this.findChildren( aclObjectIdentity ) ) {
-            evictFromCache( c );
-        }
-    }
-
-    /**
-     * Looks up a batch of <code>ObjectIdentity</code>s directly from the database, when we only know the type and
-     * object's id (not the objectIdentity PK).
+     * Load a batch of {@link AclObjectIdentity} into a mapping of {@link ObjectIdentity} to {@link Acl}.
      * <p>
-     * The caller is responsible for optimization issues, such as selecting the identities to lookup, ensuring the cache
-     * doesn't contain them already, and adding the returned elements to the cache etc.
-     * <p>
-     * This is required to return fully valid <code>Acl</code>s, including properly-configured parent ACLs.
-     *
-     * @param objectIdentities a batch of OIs to fetch ACLs for.
+     * Due to the way {@link AclObjectIdentity} are mapped with Hibernate, they are already fully initialized, so this
+     * method will proceed to populate the ACLs and their parents recursively.
      */
     private Map<ObjectIdentity, Acl> loadAcls( final Collection<AclObjectIdentity> objectIdentities ) {
-        final Map<Serializable, Acl> results = new HashMap<>();
-
-        // group by type so we can use in (...) clauses
-        Map<String, Set<Serializable>> idsByType = new HashMap<>();
-        for ( ObjectIdentity oi : objectIdentities ) {
-            idsByType.computeIfAbsent( oi.getType(), k -> new HashSet<>() )
-                    .add( oi.getIdentifier() );
-        }
-
-        Criterion[] clauses = new Criterion[idsByType.size()];
-        int i = 0;
-        for ( Map.Entry<String, Set<Serializable>> e : idsByType.entrySet() ) {
-            clauses[i++] = Restrictions.and(
-                    Restrictions.eq( "type", e.getKey() ),
-                    Restrictions.in( "identifier", e.getValue() ) );
-        }
-
-        //noinspection unchecked
-        List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession()
-                .createCriteria( AclObjectIdentity.class )
-                // possibly has no entries yet, so left outer join?
-                .createAlias( "entries", "e", JoinType.LEFT_OUTER_JOIN )
-                .add( Restrictions.or( clauses ) )
-                .addOrder( Order.asc( "identifier" ) )
-                .addOrder( Order.asc( "e.aceOrder" ) )
-                .list();
-
-        // this is okay if we haven't added the objects yet.
-        // if ( queryR.size() < objectIdentities.size() ) {
-        // log.warn( "Expected " + objectIdentities.size() + " objectidentities from db, got " + queryR.size()
-        // + " from db" );
-        // }
-
-        Set<Long> parentIdsToLookup = new HashSet<>();
-        for ( AclObjectIdentity oi : queryR ) {
-
-            AclImpl parentAcl = null;
-            AclObjectIdentity parentObjectIdentity = oi.getParentObject();
-
-            if ( parentObjectIdentity != null ) {
-
-                if ( !results.containsKey( parentObjectIdentity.getId() ) ) {
-
-                    // try to find parent in the cache
-                    MutableAcl cachedParent = aclCache.getFromCache( parentObjectIdentity.getId() );
-
-                    if ( cachedParent == null ) {
-
-                        parentIdsToLookup.add( parentObjectIdentity.getId() );
-
-                        parentAcl = new AclImpl( parentObjectIdentity, aclAuthorizationStrategy, /* parent acl */null );
-
-                        parentAcl.getEntries()
-                                .addAll( AclEntry.convert( new ArrayList<>( oi.getEntries() ), parentAcl ) );
-                    } else {
-                        parentAcl = ( AclImpl ) cachedParent;
-
-                        // Pop into the acls map, so our convert method doesn't
-                        // need to deal with an unsynchronized AclCache, even though it might not be used directly.
-
-                        results.put( cachedParent.getId(), cachedParent );
-                    }
-
-                } else {
-                    parentAcl = ( AclImpl ) results.get( parentObjectIdentity.getId() );
-                }
-
-                assert parentAcl != null;
-            }
-
-            Acl acl = new AclImpl( oi, aclAuthorizationStrategy, parentAcl );
-
-            results.put( oi.getId(), acl );
-
-        }
-
-        // Lookup the parents
-        if ( parentIdsToLookup.size() > 0 ) {
-            loadAcls( results, parentIdsToLookup );
-        }
-
-        Map<ObjectIdentity, Acl> resultMap = new HashMap<>();
-        for ( Acl inputAcl : results.values() ) {
-            resultMap.put( inputAcl.getObjectIdentity(), inputAcl );
-        }
-        return resultMap;
+        Map<ObjectIdentity, Acl> acls = new HashMap<>();
+        loadAcls( objectIdentities, acls );
+        return acls;
     }
 
     /**
-     * Load ACLs when we know the primary key of the objectIdentity. Recursively fill in the parentAcls.
+     * Load ACLs when we know the primary key of the objectIdentity. Recursively fill in the parent ACLs.
      *
-     * @param acls              the starting set of acls.
-     * @param objectIdentityIds primary keys of the object identities to be fetched. If these yield acls that are the
-     *                          parents of the given acls, they will be populated.
+     * @param objectIdentities primary keys of the object identities to be fetched. If these yield acls that are the
+     *                         parents of the given acls, they will be populated.
+     * @param acls             the starting set of acls.
      */
-    private void loadAcls( final Map<Serializable, Acl> acls, final Set<Long> objectIdentityIds ) {
+    private void loadAcls( final Collection<AclObjectIdentity> objectIdentities, final Map<ObjectIdentity, Acl> acls ) {
         Assert.notNull( acls, "ACLs are required" );
-        Assert.notEmpty( objectIdentityIds, "Items to find now required" );
 
-        //noinspection unchecked
-        List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession()
-                .createQuery( "from AclObjectIdentity where id in (:ids)" )
-                .setParameterList( "ids", objectIdentityIds )
-                .list();
-
-        Set<Long> parentsToLookup = new HashSet<>();
-        for ( AclObjectIdentity o : queryR ) {
-            if ( o.getParentObject() != null ) {
-                assert !o.getParentObject().getId().equals( o.getId() );
-                parentsToLookup.add( o.getParentObject().getId() );
-            }
-            Acl acl = new AclImpl( o, aclAuthorizationStrategy, /* parentacl, to be filled in later */null );
-            acls.put( o.getId(), acl );
+        if ( objectIdentities.isEmpty() ) {
+            return;
         }
+
+        Set<AclObjectIdentity> parentAclsToLoad = new HashSet<>();
+        for ( AclObjectIdentity o : objectIdentities ) {
+            MutableAcl acl = new AclImpl( o, o.getId(), aclAuthorizationStrategy, permissionGrantingStrategy,
+                null /* parents are filled later */, null, o.getEntriesInheriting(), o.getOwnerSid() );
+            List<AclEntry> orderedEntries = new ArrayList<>( o.getEntries() );
+            orderedEntries.sort( Comparator.comparing( AclEntry::getAceOrder ) );
+            List<AccessControlEntry> aces = new ArrayList<>( o.getEntries().size() );
+            for ( AclEntry e : orderedEntries ) {
+                aces.add( new AccessControlEntryImpl( e.getId(), acl, e.getSid(), permissionFactory.buildFromMask( e.getMask() ), e.isGranting(), false, false ) );
+            }
+            // unfortunately, there's no way to pass a pre-constructed list of ACEs to Spring ACL implementation without
+            // going through insertAce()
+            FieldUtils.setProtectedFieldValue( "aces", acl, aces );
+            // we call setParent() later
+            if ( o.getParentObject() != null ) {
+                Acl parentAcl = acls.get( o.getParentObject() );
+                if ( parentAcl != null ) {
+                    acl.setParent( parentAcl );
+                } else {
+                    parentAclsToLoad.add( o.getParentObject() );
+                }
+            }
+            acls.put( o, acl );
+        }
+
+        // load the parent ACLs (recursively)
+        loadAcls( parentAclsToLoad, acls );
 
         /*
          * Fill in the parent Acls for the acls that need them.
          */
-        for ( Long oiid : objectIdentityIds ) {
+        for ( AclObjectIdentity oiid : objectIdentities ) {
             MutableAcl acl = ( MutableAcl ) acls.get( oiid );
-
             if ( acl.getParentAcl() != null ) {
                 // we already did it.
                 continue;
             }
-
-            ObjectIdentity oi = acl.getObjectIdentity();
-            AclObjectIdentity aoi = ( AclObjectIdentity ) oi;
-
-            if ( aoi.getParentObject() != null ) {
+            if ( oiid.getParentObject() != null ) {
+                Acl parentAcl = acls.get( oiid.getParentObject() );
                 // this used to be an assertion, source of failures not clear...
-                if ( !acls.containsKey( aoi.getParentObject().getId() ) ) {
+                if ( parentAcl == null ) {
                     throw new IllegalStateException(
-                            "ACLs did not contain key for parent object identity of " + aoi + "( parent = " + aoi.getParentObject() + "); "
-                                    + "ACLs being inspected: " + StringUtils.collectionToDelimitedString( acls.values(), "\n" ) );
+                        "ACLs did not contain key for parent object identity of " + oiid + "( parent = " + oiid.getParentObject() + "); "
+                            + "ACLs being inspected: " + StringUtils.collectionToDelimitedString( acls.values(), "\n" ) );
                 }
-                // end assertion
-
-                Acl parentAcl = acls.get( aoi.getParentObject().getId() );
-                assert !acl.equals( parentAcl );
                 acl.setParent( parentAcl );
             }
         }
-
-        // Recurse; Lookup the parents of the newly fetched Acls.
-        if ( parentsToLookup.size() > 0 ) {
-            loadAcls( acls, parentsToLookup );
-        }
     }
-
 }

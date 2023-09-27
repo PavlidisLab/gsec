@@ -3,7 +3,7 @@
    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-   <class name="gemma.gsec.acl.domain.AclObjectIdentity" table="ACLOBJECTIDENTITY">
+   <class name="gemma.gsec.acl.domain.AclObjectIdentity" table="ACLOBJECTIDENTITY" batch-size="100">
       <cache usage="read-write"/>
       <id name="id" type="java.lang.Long" unsaved-value="null">
          <column name="ID" sql-type="BIGINT"/>

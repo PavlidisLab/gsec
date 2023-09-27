@@ -15,12 +15,10 @@
 package gemma.gsec.acl.domain;
 
 import org.springframework.security.acls.jdbc.LookupStrategy;
-import org.springframework.security.acls.model.MutableAcl;
-import org.springframework.security.acls.model.ObjectIdentity;
-import org.springframework.security.acls.model.Sid;
+import org.springframework.security.acls.model.Acl;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -29,22 +27,32 @@ import java.util.List;
  */
 public interface AclDao extends LookupStrategy {
 
-    AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, boolean entriesInheriting );
+    /**
+     * Find an ACL object identity confirming to the given object identity.
+     */
+    @Nullable
+    AclObjectIdentity findObjectIdentity( AclObjectIdentity objectIdentity );
 
-    void delete( ObjectIdentity objectIdentity, boolean deleteChildren );
+    List<AclObjectIdentity> findChildren( AclObjectIdentity parentIdentity );
 
-    void delete( Sid sid );
+    /**
+     * Create a new object identity.
+     */
+    @CheckReturnValue
+    AclObjectIdentity createObjectIdentity( AclObjectIdentity oid );
+
+    /**
+     * Update a given object identity so that it conforms to a given ACL object.
+     */
+    void updateObjectIdentity( AclObjectIdentity aclObjectIdentity, Acl acl );
+
+    void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren );
+
+    void deleteSid( AclSid sid );
 
     @Nullable
-    AclObjectIdentity find( ObjectIdentity oid );
+    AclSid findSid( AclSid sid );
 
-    @Nullable
-    AclSid find( Sid sid );
-
-    List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity );
-
-    AclSid findOrCreate( Sid sid );
-
-    void update( MutableAcl acl );
-
+    @CheckReturnValue
+    AclSid findOrCreateSid( AclSid sid );
 }
