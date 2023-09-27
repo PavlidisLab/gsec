@@ -267,7 +267,7 @@
 	</bean>
 
 	<!-- After reading an object filter. Throws an exception when access is denied (AFTER_ACL_READ) -->
-	<bean id="afterAclRead" class="org.springframework.security.acls.afterinvocation.AclEntryAfterInvocationProvider">
+	<bean id="afterAclRead" class="gemma.gsec.acl.afterinvocation.AclEntryAfterInvocationProvider">
 		<constructor-arg ref="aclService"/>
 		<constructor-arg>
 			<list>
@@ -281,7 +281,7 @@
 	</bean>
 
 	<!-- After reading an object filter: but return null rather than throwing an exception. (AFTER_ACL_READ_QUIET) -->
-	<bean id="afterAclReadQuiet" class="gemma.gsec.acl.afterinvocation.AclEntryAfterInvocationQuietProvider">
+	<bean id="afterAclReadQuiet" class="gemma.gsec.acl.afterinvocation.AclEntryAfterInvocationProvider">
 		<constructor-arg ref="aclService"/>
 		<constructor-arg>
 			<list>
@@ -292,6 +292,7 @@
 		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
 		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
 		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+		<property name="quiet" value="true"/>
 	</bean>
 
 	<!-- after reading a collection filter: remove unallowed objects -->

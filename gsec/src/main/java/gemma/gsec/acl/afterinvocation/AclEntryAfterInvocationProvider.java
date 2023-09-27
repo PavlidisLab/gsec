@@ -18,7 +18,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.ConfigAttribute;
-import org.springframework.security.acls.afterinvocation.AclEntryAfterInvocationProvider;
 import org.springframework.security.acls.model.AclService;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.core.Authentication;
@@ -32,12 +31,14 @@ import java.util.List;
  * @author paul
  * @version $Id: AclEntryAfterInvocationQuietProvider.java,v 1.3 2013/09/14 16:56:03 paul Exp $
  */
-public class AclEntryAfterInvocationQuietProvider extends AclEntryAfterInvocationProvider {
+public class AclEntryAfterInvocationProvider extends org.springframework.security.acls.afterinvocation.AclEntryAfterInvocationProvider {
 
-    private static final Log log = LogFactory.getLog( AclEntryAfterInvocationQuietProvider.class );
+    private static final Log log = LogFactory.getLog( AclEntryAfterInvocationProvider.class );
 
-    public AclEntryAfterInvocationQuietProvider( AclService aclService, List<Permission> requirePermission ) {
-        super( aclService, "AFTER_ACL_READ_QUIET", requirePermission );
+    private boolean quiet;
+
+    public AclEntryAfterInvocationProvider( AclService aclService, List<Permission> requirePermission ) {
+        super( aclService, requirePermission );
     }
 
     @Override
@@ -46,11 +47,31 @@ public class AclEntryAfterInvocationQuietProvider extends AclEntryAfterInvocatio
         try {
             return super.decide( authentication, object, config, returnedObject );
         } catch ( AccessDeniedException e ) {
-            // This is expected when user is anonymous, etc.
-            // log.warn( "Access denied to: " + object );
-            if ( log.isDebugEnabled() ) log.debug( e + ": returning null" );
-            return null;
+            String processConfigAttributeQuiet = processConfigAttribute + "_QUIET";
+            if ( quiet && config.stream().map( ConfigAttribute::getAttribute ).anyMatch( processConfigAttributeQuiet::equals ) ) {
+
+                // This is expected when user is anonymous, etc.
+                // log.warn( "Access denied to: " + object );
+                if ( log.isDebugEnabled() ) log.debug( e + ": returning null" );
+                return null;
+            } else {
+                throw e;
+            }
         }
     }
 
+    @Override
+    public boolean supports( ConfigAttribute attribute ) {
+        return super.supports( attribute )
+            || ( quiet && ( processConfigAttribute + "_QUIET" ).equals( attribute.getAttribute() ) );
+    }
+
+    /**
+     * If set to true, this provider will return null rather than throwing an {@link AccessDeniedException}.
+     * <p>
+     * To work, you must add the {@code _QUIET} suffix to the config attribute.
+     */
+    public void setQuiet( boolean quiet ) {
+        this.quiet = quiet;
+    }
 }
