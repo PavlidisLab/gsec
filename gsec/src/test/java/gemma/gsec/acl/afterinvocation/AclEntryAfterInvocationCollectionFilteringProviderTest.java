@@ -1,9 +1,11 @@
 package gemma.gsec.acl.afterinvocation;
 
+import gemma.gsec.acl.domain.AclObjectIdentity;
 import gemma.gsec.acl.domain.AclService;
 import gemma.gsec.model.Securable;
+import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.acls.domain.BasePermission;
@@ -20,7 +22,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.*;
@@ -60,36 +64,37 @@ public class AclEntryAfterInvocationCollectionFilteringProviderTest {
         verifyNoMoreInteractions( acl );
     }
 
+    public static class MyModel implements Securable {
+
+        @Override
+        public Long getId() {
+            return 1L;
+        }
+
+        @Override
+        public int hashCode() {
+            throw new RuntimeException( "Should not be called!" );
+        }
+    }
+
     /**
      * Hashing an element triggers a proxy initialization with Hibernate, which is not desirable.
+     * <p>
+     * This is an issue in Spring Security where a HashSet is used for removing proxies.
+     * See <a href="https://github.com/PavlidisLab/gsec/issues/25">#25</a> for details.
      */
     @Test
-    @Ignore("This is an issue in Spring Security where a HashSet is used for removing proxies. See https://github.com/PavlidisLab/gsec/issues/25 for details.")
     public void testRemovedCollectionElementsAreNotHashed() {
+        Securable a = new MyModel();
+        AclObjectIdentity oid = new AclObjectIdentity( a );
         Acl acl = mock( Acl.class );
         when( acl.isGranted( any(), any(), anyBoolean() ) ).thenReturn( false );
-        when( aclService.readAclsById( any() ) )
-            .thenAnswer( a -> a.getArgument( 0, Collection.class ).stream()
-                .distinct()
-                .collect( Collectors.toMap( o -> ( ObjectIdentity ) o, o -> acl ) ) );
-        Securable a = new Securable() {
-            @Override
-            public Long getId() {
-                return 1L;
-            }
-
-            @Override
-            public int hashCode() {
-                throw new UnsupportedOperationException( "I cannot be hashed!" );
-            }
-        };
-        Collection<?> collection = new ArrayList<>( Arrays.asList( a, mock( Securable.class ) ) );
-        Collection<?> result = ( Collection<?> ) voter.decide( auth, null, Collections.singletonList( ca ), collection );
-        assertSame( collection, result );
-        assertTrue( result.isEmpty() );
-        verify( acl, times( 2 ) ).isGranted( any(), any(), eq( false ) );
-        verifyNoMoreInteractions( acl );
-        verify( a ).getId();
-        verifyNoMoreInteractions( a );
+        when( aclService.readAclsById( Collections.singletonList( oid ) ) )
+            .thenReturn( Collections.singletonMap( oid, acl ) );
+        Collection<?> collection = new ArrayList<>( Collections.singletonList( a ) );
+        assertThatThrownBy( () -> voter.decide( auth, null, Collections.singletonList( ca ), collection ) )
+            .isInstanceOf( RuntimeException.class )
+            .hasMessageContaining( "Should not be called!" )
+            .hasStackTraceContaining( "org.springframework.security.acls.afterinvocation.CollectionFilterer.remove" );
     }
 }
