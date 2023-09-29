@@ -17,6 +17,7 @@ package gemma.gsec.acl.domain;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.Hibernate;
+import org.hibernate.ObjectNotFoundException;
 import org.hibernate.SessionFactory;
 import org.springframework.security.acls.domain.*;
 import org.springframework.security.acls.model.*;
@@ -25,7 +26,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -57,18 +57,18 @@ public class AclDaoImpl implements AclDao {
 
     @Override
     public AclObjectIdentity findObjectIdentity( AclObjectIdentity oid ) {
-        Assert.notNull( oid.getType() );
-        Assert.notNull( oid.getIdentifier() );
         // fast path if we know the ID
         if ( oid.getId() != null ) {
             return ( AclObjectIdentity ) sessionFactory.getCurrentSession()
                 .get( AclObjectIdentity.class, oid.getId() );
         }
+        Assert.notNull( oid.getType() );
+        Assert.notNull( oid.getIdentifier() );
         return ( AclObjectIdentity ) sessionFactory.getCurrentSession()
-            .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
-            .setParameter( "t", oid.getType() )
-            .setParameter( "i", oid.getIdentifier() )
-            .uniqueResult();
+            .byNaturalId( AclObjectIdentity.class )
+            .using( "type", oid.getType() )
+            .using( "identifier", oid.getIdentifier() )
+            .load();
     }
 
 
@@ -200,37 +200,50 @@ public class AclDaoImpl implements AclDao {
     public Map<ObjectIdentity, Acl> readAclsById( List<ObjectIdentity> objects, List<Sid> sids ) {
         Assert.notEmpty( objects, "Objects to lookup required" );
 
-        Set<AclObjectIdentity> aclsToLoad = new HashSet<>();
-        Set<AclObjectIdentity> byId = new HashSet<>();
-        Map<String, Set<AclObjectIdentity>> byTypeAndIdentifier = new HashMap<>();
+        // must use a list, otherwise the proxies will be initialized
+        List<AclObjectIdentity> reloadedAclOids = new ArrayList<>();
         for ( ObjectIdentity oid : objects ) {
             Assert.isInstanceOf( AclObjectIdentity.class, oid );
             AclObjectIdentity aclOid = ( AclObjectIdentity ) oid;
+            AclObjectIdentity reloadedAclOid;
             if ( aclOid.getId() != null ) {
                 // load it from the first/second-level cache
-                aclsToLoad.add( ( AclObjectIdentity ) sessionFactory.getCurrentSession().load( AclObjectIdentity.class, aclOid.getId() ) );
+                reloadedAclOid = ( AclObjectIdentity ) sessionFactory.getCurrentSession()
+                    .load( AclObjectIdentity.class, aclOid.getId() );
             } else {
-                // forced to fetch it manually
-                byTypeAndIdentifier.computeIfAbsent( oid.getType(), k -> new HashSet<>() )
-                    .add( ( AclObjectIdentity ) oid );
+                // load it from the first/second-level cache using a natural ID (i.e. type + identifier)
+                Assert.notNull( aclOid.getType() );
+                Assert.notNull( aclOid.getIdentifier() );
+                reloadedAclOid = ( AclObjectIdentity ) sessionFactory.getCurrentSession()
+                    .byNaturalId( AclObjectIdentity.class )
+                    .using( "type", aclOid.getType() )
+                    .using( "identifier", aclOid.getIdentifier() )
+                    .getReference();
+                if ( reloadedAclOid == null ) {
+                    // FIXME: for some reason, natural ID retrieval may return null without producing an invalid proxy
+                    log.trace( "Failed to load an ACL object identity from persistent storage.",
+                        new ObjectNotFoundException( aclOid.getType() + ":" + aclOid.getIdentifier(), AclObjectIdentity.class.getName() ) );
+                    continue;
+                }
             }
+            reloadedAclOids.add( reloadedAclOid );
         }
 
         // Hibernate uses batch-fetching for proxies, and we've set batch-size in AclObjectIdentity.hbm.xml, so this
         // should be relatively efficient
-        aclsToLoad.forEach( Hibernate::initialize );
-
-        for ( Map.Entry<String, Set<AclObjectIdentity>> entry : byTypeAndIdentifier.entrySet() ) {
-            //noinspection unchecked
-            aclsToLoad.addAll( sessionFactory.getCurrentSession()
-                .createQuery( "from AclObjectIdentity where type = :type and identifier in :ids" )
-                .setParameter( "type", entry.getKey() )
-                .setParameterList( "ids", entry.getValue().stream().map( AclObjectIdentity::getIdentifier ).sorted().distinct().collect( Collectors.toList() ) )
-                .list() );
+        Iterator<AclObjectIdentity> iterator = reloadedAclOids.iterator();
+        while ( iterator.hasNext() ) {
+            AclObjectIdentity reloadedAclOid = iterator.next();
+            try {
+                Hibernate.initialize( reloadedAclOid );
+            } catch ( ObjectNotFoundException e ) {
+                log.trace( "Failed to load an ACL object identity from persistent storage.", e );
+                iterator.remove();
+            }
         }
 
         // Add loaded batch (all elements 100% initialized) to results
-        return loadAcls( aclsToLoad );
+        return loadAcls( reloadedAclOids );
     }
 
     /**

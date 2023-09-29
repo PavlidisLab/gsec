@@ -133,6 +133,10 @@ public class AclServiceTest extends AbstractJUnit4SpringContextTests {
         aclService.updateAcl( acl );
 
         aclService.deleteAcl( oidP, true );
+        assertThatThrownBy( () -> aclService.readAclById( oid ) )
+            .isInstanceOf( NotFoundException.class );
+        assertThatThrownBy( () -> aclService.readAclById( oidP ) )
+            .isInstanceOf( NotFoundException.class );
         assertThatThrownBy( () -> aclService.readAclById( new AclObjectIdentity( new MyModel( 5L ) ) ) )
             .isInstanceOf( NotFoundException.class );
         assertThatThrownBy( () -> aclService.readAclById( new AclObjectIdentity( new MyModel( 4L ) ) ) )
