@@ -75,7 +75,7 @@ public class AclDaoImpl implements AclDao {
     @Override
     public AclObjectIdentity createObjectIdentity( AclObjectIdentity aoi ) {
         sessionFactory.getCurrentSession().persist( aoi );
-        log.trace( String.format( "Created %s", aoi ) );
+        log.trace( "Created " + aoi );
         return aoi;
     }
 
@@ -186,10 +186,9 @@ public class AclDaoImpl implements AclDao {
     }
 
     @Override
-    public AclSid findOrCreateSid( AclSid sid ) {
-        AclSid fsid = this.findSid( sid );
-        if ( fsid != null ) return fsid;
+    public AclSid createSid( AclSid sid ) {
         sessionFactory.getCurrentSession().persist( sid );
+        log.trace( "Created " + sid );
         return sid;
     }
 

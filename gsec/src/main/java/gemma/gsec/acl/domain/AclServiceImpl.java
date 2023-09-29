@@ -69,9 +69,9 @@ public class AclServiceImpl implements AclService {
         }
 
         // create the SID
-        if ( aclObjectIdentity.getOwnerSid().getId() == null ) {
+        if ( aclDao.findSid( aclObjectIdentity.getOwnerSid() ) == null ) {
             log.trace( String.format( "Owner of %s does not have an ID, finding or creating it...", aclObjectIdentity ) );
-            aclObjectIdentity.setOwnerSid( aclDao.findOrCreateSid( aclObjectIdentity.getOwnerSid() ) );
+            aclObjectIdentity.setOwnerSid( aclDao.createSid( aclObjectIdentity.getOwnerSid() ) );
         }
 
         // if the parent is identified by type/identifier, we have to retrieve it
@@ -144,9 +144,9 @@ public class AclServiceImpl implements AclService {
         Assert.notNull( acl.getId(), "Object Identity doesn't provide an identifier" );
         Assert.isInstanceOf( AclObjectIdentity.class, acl.getObjectIdentity() );
         Assert.isInstanceOf( AclSid.class, acl.getOwner() );
-        if ( ( ( AclSid ) acl.getOwner() ).getId() == null ) {
-            log.trace( String.format( "Owner of %s does not have an ID, finding or creating it...", acl ) );
-            acl.setOwner( aclDao.findOrCreateSid( ( AclSid ) acl.getOwner() ) );
+        if ( aclDao.findSid( ( AclSid ) acl.getOwner() ) == null ) {
+            log.trace( String.format( "Owner of %s does not exist, creating it...", acl ) );
+            acl.setOwner( aclDao.createSid( ( AclSid ) acl.getOwner() ) );
         }
         aclDao.updateObjectIdentity( ( AclObjectIdentity ) acl.getObjectIdentity(), acl );
         return acl;

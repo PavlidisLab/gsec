@@ -76,5 +76,5 @@ public interface AclDao extends LookupStrategy {
     AclSid findSid( AclSid sid );
 
     @CheckReturnValue
-    AclSid findOrCreateSid( AclSid sid );
+    AclSid createSid( AclSid sid );
 }

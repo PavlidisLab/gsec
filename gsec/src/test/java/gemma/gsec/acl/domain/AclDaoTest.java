@@ -36,7 +36,7 @@ public class AclDaoTest extends AbstractTransactionalJUnit4SpringContextTests {
     @Test
     public void testFindObjectIdentityById() {
         AclObjectIdentity oid = new AclObjectIdentity( MyModel.class, 1L );
-        oid.setOwnerSid( aclDao.findOrCreateSid( new AclPrincipalSid( "me" ) ) );
+        oid.setOwnerSid( aclDao.createSid( new AclPrincipalSid( "me" ) ) );
         oid = aclDao.createObjectIdentity( oid );
         assertNotNull( oid.getId() );
         assertSame( oid, aclDao.findObjectIdentity( oid ) ); // by ID
