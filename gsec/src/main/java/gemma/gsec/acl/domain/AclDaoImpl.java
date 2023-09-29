@@ -80,7 +80,7 @@ public class AclDaoImpl implements AclDao {
     }
 
     @Override
-    public void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren ) {
+    public void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException {
         if ( deleteChildren ) {
             deleteObjectIdentityAndChildren( objectIdentity, 0 );
         } else if ( !hasChildren( objectIdentity ) ) {
@@ -111,38 +111,30 @@ public class AclDaoImpl implements AclDao {
 
     @Override
     public void deleteSid( AclSid sid ) {
-        Sid toDelete = this.findSid( sid );
+        Assert.notNull( sid.getId() );
 
-        if ( toDelete == null ) {
-            log.warn( "No such sid: " + sid );
-            return;
+        // delete any ACL entries referring to this sid
+        int deletedEntries = sessionFactory.getCurrentSession()
+            .createQuery( "delete from AclEntry e where e.sid = :sid" )
+            .setParameter( "sid", sid )
+            .executeUpdate();
+        if ( deletedEntries > 0 ) {
+            log.trace( String.format( "Deleted %d ACL entries owned by %s", deletedEntries, sid ) );
         }
 
-        // delete any objectidentities owned
-        //noinspection unchecked
-        List<AclObjectIdentity> ownedOis = sessionFactory.getCurrentSession()
-            .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
-            .setParameter( "sid", toDelete ).list();
-
-        if ( !ownedOis.isEmpty() ) {
-            for ( AclObjectIdentity oi : ownedOis ) {
-                sessionFactory.getCurrentSession().delete( oi );
-            }
-        }
-
-        // delete any aclentries referring to this sid
-        //noinspection unchecked
-        List<AclEntry> entries = sessionFactory.getCurrentSession()
-            .createQuery( "select e from AclEntry e where e.sid = :sid" )
-            .setParameter( "sid", toDelete ).list();
-
-        for ( AclEntry e : entries ) {
-            sessionFactory.getCurrentSession().delete( e );
+        // delete any object identities owned by the sid
+        int deletedOis = sessionFactory.getCurrentSession()
+            .createQuery( "delete from AclObjectIdentity oi where oi.ownerSid = :sid  " )
+            .setParameter( "sid", sid )
+            .executeUpdate();
+        if ( deletedOis > 0 ) {
+            log.trace( String.format( "Deleted %d ACL object identities owned by %s", deletedOis, sid ) );
         }
 
         // now we can safely delete the sid
-        sessionFactory.getCurrentSession().delete( toDelete );
-        log.trace( "Delete: " + toDelete );
+        sessionFactory.getCurrentSession().delete( sid );
+
+        log.trace( "Delete: " + sid );
     }
 
     @Override
@@ -182,6 +174,8 @@ public class AclDaoImpl implements AclDao {
                 .setParameter( "po", parentIdentity )
                 .list();
         } else {
+            Assert.notNull( parentIdentity.getType() );
+            Assert.notNull( parentIdentity.getIdentifier() );
             //noinspection unchecked
             return sessionFactory.getCurrentSession()
                 .createQuery( "from AclObjectIdentity o where o.parentObject.type = :type and o.parentObject.identifier = :identifier" )
@@ -229,8 +223,8 @@ public class AclDaoImpl implements AclDao {
                     .getReference();
                 if ( reloadedAclOid == null ) {
                     // FIXME: for some reason, natural ID retrieval may return null without producing an invalid proxy
-                    log.trace( "Failed to load an ACL object identity from persistent storage.",
-                        new ObjectNotFoundException( aclOid.getType() + ":" + aclOid.getIdentifier(), AclObjectIdentity.class.getName() ) );
+                    log.trace( "Failed to load an ACL object identity from persistent storage: "
+                        + new ObjectNotFoundException( aclOid.getType() + ":" + aclOid.getIdentifier(), AclObjectIdentity.class.getName() ).getMessage() );
                     continue;
                 }
             }
@@ -245,7 +239,7 @@ public class AclDaoImpl implements AclDao {
             try {
                 Hibernate.initialize( reloadedAclOid );
             } catch ( ObjectNotFoundException e ) {
-                log.trace( "Failed to load an ACL object identity from persistent storage.", e );
+                log.trace( "Failed to load an ACL object identity from persistent storage: " + e.getMessage() );
                 iterator.remove();
             }
         }

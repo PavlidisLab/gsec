@@ -85,6 +85,25 @@ public class AclServiceTest extends AbstractJUnit4SpringContextTests {
     }
 
     @Test
+    public void testDeleteSid() {
+        AclSid me = new AclPrincipalSid( "me" );
+        AclObjectIdentity oid = new AclObjectIdentity( new MyModel( 1L ) );
+        oid.setOwnerSid( me );
+
+        MutableAcl acl = aclService.createAcl( oid );
+
+        acl.insertAce( 0, BasePermission.READ, me, false );
+        acl.setEntriesInheriting( true );
+        aclService.updateAcl( acl );
+
+        aclService.deleteSid( me );
+
+        // there's no way to check the ACE has been removed, but that would have violated a FK constraint
+        assertThatThrownBy( () -> aclService.readAclById( oid ) )
+            .isInstanceOf( NotFoundException.class );
+    }
+
+    @Test
     public void testAclWithParent() {
         AclObjectIdentity oid = new AclObjectIdentity( new MyModel( 2L ) );
         MutableAcl acl = aclService.createAcl( oid );

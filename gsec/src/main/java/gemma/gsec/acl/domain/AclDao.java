@@ -16,6 +16,7 @@ package gemma.gsec.acl.domain;
 
 import org.springframework.security.acls.jdbc.LookupStrategy;
 import org.springframework.security.acls.model.Acl;
+import org.springframework.security.acls.model.ChildrenExistException;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
@@ -29,10 +30,15 @@ public interface AclDao extends LookupStrategy {
 
     /**
      * Find an ACL object identity confirming to the given object identity.
+     * <p>
+     * If the provided object as a non-null ID, it is used, otherwise the type and identifier is used.
      */
     @Nullable
     AclObjectIdentity findObjectIdentity( AclObjectIdentity objectIdentity );
 
+    /**
+     * Find all the children of the given object identity.
+     */
     List<AclObjectIdentity> findChildren( AclObjectIdentity parentIdentity );
 
     /**
@@ -46,10 +52,26 @@ public interface AclDao extends LookupStrategy {
      */
     void updateObjectIdentity( AclObjectIdentity aclObjectIdentity, Acl acl );
 
-    void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren );
+    /**
+     * Delete a given object identity.
+     *
+     * @param deleteChildren if true, the children are recursively deleted as well
+     * @throws ChildrenExistException if deleteChildren is false and there are children associated to the object
+     *                                identity, those must be removed beforehand
+     */
+    void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException;
 
+    /**
+     * Delete a given SID.
+     */
     void deleteSid( AclSid sid );
 
+    /**
+     * Retrieve a SID conforming to the given object.
+     * <p>
+     * If the provided object as a non-null ID, it is used, otherwise either the principal or granted authority is used
+     * depending on the type.
+     */
     @Nullable
     AclSid findSid( AclSid sid );
 

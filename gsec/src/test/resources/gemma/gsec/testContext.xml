@@ -10,15 +10,14 @@
     <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
         <property name="sessionFactory" ref="sessionFactory"/>
     </bean>
-    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
-        <property name="dataSource">
-            <bean class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
-                <property name="driver">
-                    <bean class="org.h2.Driver"/>
-                </property>
-                <property name="url" value="jdbc:h2:mem:gsec;MODE=MYSQL;DB_CLOSE_DELAY=-1"/>
-            </bean>
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+        <property name="driver">
+            <bean class="org.h2.Driver"/>
         </property>
+        <property name="url" value="jdbc:h2:mem:gsec;MODE=MYSQL;DB_CLOSE_DELAY=-1"/>
+    </bean>
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
         <property name="configLocation" value="classpath:gemma/gsec/hibernate.cfg.xml"/>
         <property name="hibernateProperties">
             <props>

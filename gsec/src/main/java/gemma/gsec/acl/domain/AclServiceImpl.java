@@ -102,9 +102,10 @@ public class AclServiceImpl implements AclService {
     @Transactional
     public void deleteSid( Sid sid ) {
         Assert.isInstanceOf( AclSid.class, sid );
-        aclDao.deleteSid( ( AclSid ) sid );
+        AclSid aclSid = aclDao.findSid( ( AclSid ) sid );
+        Assert.notNull( aclSid );
+        aclDao.deleteSid( aclSid );
     }
-
 
     @Override
     @Transactional(readOnly = true)
