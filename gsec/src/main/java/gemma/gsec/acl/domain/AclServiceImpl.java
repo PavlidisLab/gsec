@@ -69,7 +69,10 @@ public class AclServiceImpl implements AclService {
         }
 
         // create the SID
-        if ( aclDao.findSid( aclObjectIdentity.getOwnerSid() ) == null ) {
+        AclSid ownerSid = aclDao.findSid( aclObjectIdentity.getOwnerSid() );
+        if ( ownerSid != null ) {
+            aclObjectIdentity.setOwnerSid( ownerSid );
+        } else {
             log.trace( String.format( "Owner of %s does not have an ID, finding or creating it...", aclObjectIdentity ) );
             aclObjectIdentity.setOwnerSid( aclDao.createSid( aclObjectIdentity.getOwnerSid() ) );
         }
@@ -144,7 +147,10 @@ public class AclServiceImpl implements AclService {
         Assert.notNull( acl.getId(), "Object Identity doesn't provide an identifier" );
         Assert.isInstanceOf( AclObjectIdentity.class, acl.getObjectIdentity() );
         Assert.isInstanceOf( AclSid.class, acl.getOwner() );
-        if ( aclDao.findSid( ( AclSid ) acl.getOwner() ) == null ) {
+        AclSid ownerSid = aclDao.findSid( ( AclSid ) acl.getOwner() );
+        if ( ownerSid != null ) {
+            acl.setOwner( ownerSid );
+        } else {
             log.trace( String.format( "Owner of %s does not exist, creating it...", acl ) );
             acl.setOwner( aclDao.createSid( ( AclSid ) acl.getOwner() ) );
         }

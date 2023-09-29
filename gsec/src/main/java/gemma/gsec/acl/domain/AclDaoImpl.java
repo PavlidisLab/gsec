@@ -74,6 +74,7 @@ public class AclDaoImpl implements AclDao {
 
     @Override
     public AclObjectIdentity createObjectIdentity( AclObjectIdentity aoi ) {
+        Assert.isNull( aoi.getId() );
         sessionFactory.getCurrentSession().persist( aoi );
         log.trace( "Created " + aoi );
         return aoi;
@@ -81,6 +82,7 @@ public class AclDaoImpl implements AclDao {
 
     @Override
     public void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException {
+        Assert.notNull( objectIdentity.getId() );
         if ( deleteChildren ) {
             deleteObjectIdentityAndChildren( objectIdentity, 0 );
         } else if ( !hasChildren( objectIdentity ) ) {
@@ -124,7 +126,7 @@ public class AclDaoImpl implements AclDao {
 
         // delete any object identities owned by the sid
         int deletedOis = sessionFactory.getCurrentSession()
-            .createQuery( "delete from AclObjectIdentity oi where oi.ownerSid = :sid  " )
+            .createQuery( "delete from AclObjectIdentity oi where oi.ownerSid = :sid" )
             .setParameter( "sid", sid )
             .executeUpdate();
         if ( deletedOis > 0 ) {
@@ -187,6 +189,14 @@ public class AclDaoImpl implements AclDao {
 
     @Override
     public AclSid createSid( AclSid sid ) {
+        Assert.isNull( sid.getId() );
+        if ( sid instanceof AclPrincipalSid ) {
+            Assert.notNull( ( ( AclPrincipalSid ) sid ).getPrincipal() );
+        } else if ( sid instanceof AclGrantedAuthoritySid ) {
+            Assert.notNull( ( ( AclGrantedAuthoritySid ) sid ).getGrantedAuthority() );
+        } else {
+            throw new IllegalArgumentException( "Unsupported SID type " + sid.getClass().getName() );
+        }
         sessionFactory.getCurrentSession().persist( sid );
         log.trace( "Created " + sid );
         return sid;
@@ -259,11 +269,13 @@ public class AclDaoImpl implements AclDao {
         updateObjectIdentity( aclObjectIdentity, acl, 0 );
         // persist the changes immediately
         sessionFactory.getCurrentSession().update( aclObjectIdentity );
-        sessionFactory.getCurrentSession().flush();
         if ( log.isTraceEnabled() )
             log.trace( ">>>>>>>>>> Done with database update of ACL for: " + acl.getObjectIdentity() );
     }
 
+    /**
+     * Recursively update an ACL object identity and their parents, if any.
+     */
     private void updateObjectIdentity( AclObjectIdentity aclObjectIdentity, Acl acl, int indentSize ) {
         Assert.isInstanceOf( AclObjectIdentity.class, acl.getObjectIdentity() );
         Assert.isInstanceOf( AclSid.class, acl.getOwner() );

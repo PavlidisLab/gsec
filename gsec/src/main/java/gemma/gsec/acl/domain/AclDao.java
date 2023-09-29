@@ -62,11 +62,6 @@ public interface AclDao extends LookupStrategy {
     void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException;
 
     /**
-     * Delete a given SID.
-     */
-    void deleteSid( AclSid sid );
-
-    /**
      * Retrieve a SID conforming to the given object.
      * <p>
      * If the provided object as a non-null ID, it is used, otherwise either the principal or granted authority is used
@@ -75,6 +70,14 @@ public interface AclDao extends LookupStrategy {
     @Nullable
     AclSid findSid( AclSid sid );
 
+    /**
+     * Create a given SID.
+     */
     @CheckReturnValue
     AclSid createSid( AclSid sid );
+
+    /**
+     * Delete a given SID.
+     */
+    void deleteSid( AclSid sid );
 }
