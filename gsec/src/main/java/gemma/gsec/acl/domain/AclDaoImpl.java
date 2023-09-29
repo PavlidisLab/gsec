@@ -149,12 +149,20 @@ public class AclDaoImpl implements AclDao {
     public AclSid findSid( AclSid sid ) {
         if ( sid instanceof AclPrincipalSid ) {
             AclPrincipalSid p = ( AclPrincipalSid ) sid;
+            if ( sid.getId() != null ) {
+                return ( AclSid ) sessionFactory.getCurrentSession().get( AclPrincipalSid.class, p.getId() );
+            }
+            Assert.notNull( p.getPrincipal() );
             return ( AclSid ) sessionFactory.getCurrentSession()
                 .createQuery( "from AclPrincipalSid where principal = :p" )
                 .setParameter( "p", p.getPrincipal() )
                 .uniqueResult();
         } else if ( sid instanceof AclGrantedAuthoritySid ) {
             AclGrantedAuthoritySid g = ( AclGrantedAuthoritySid ) sid;
+            if ( sid.getId() != null ) {
+                return ( AclSid ) sessionFactory.getCurrentSession().get( AclGrantedAuthoritySid.class, g.getId() );
+            }
+            Assert.notNull( g.getGrantedAuthority() );
             return ( AclSid ) sessionFactory.getCurrentSession()
                 .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
                 .setParameter( "g", g.getGrantedAuthority() )
