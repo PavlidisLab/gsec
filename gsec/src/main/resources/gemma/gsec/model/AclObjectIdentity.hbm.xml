@@ -3,19 +3,21 @@
    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-   <class name="gemma.gsec.acl.domain.AclObjectIdentity" table="ACLOBJECTIDENTITY">
+   <class name="gemma.gsec.acl.domain.AclObjectIdentity" table="ACLOBJECTIDENTITY" batch-size="100">
       <cache usage="read-write"/>
       <id name="id" type="java.lang.Long" unsaved-value="null">
          <column name="ID" sql-type="BIGINT"/>
          <generator class="native">
          </generator>
       </id>
-      <property name="identifier" type="java.lang.Long">
-         <column name="OBJECT_ID" not-null="true" unique="false" sql-type="BIGINT"/>
-      </property>
-      <property name="type" type="java.lang.String">
-         <column name="OBJECT_CLASS" not-null="true" unique="false" sql-type="VARCHAR(255)"/>
-      </property>
+      <natural-id>
+         <property name="identifier" type="java.lang.Long">
+            <column name="OBJECT_ID" not-null="true" unique="false" sql-type="BIGINT"/>
+         </property>
+         <property name="type" type="java.lang.String">
+            <column name="OBJECT_CLASS" not-null="true" unique="false" sql-type="VARCHAR(255)"/>
+         </property>
+      </natural-id>
       <property name="entriesInheriting" type="java.lang.Boolean">
          <column name="ENTRIES_INHERITING" not-null="true" unique="false" sql-type="TINYINT"/>
       </property>

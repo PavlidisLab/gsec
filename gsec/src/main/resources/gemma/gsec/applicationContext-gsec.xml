@@ -9,10 +9,17 @@
 		<constructor-arg ref="authenticationManager"/>
 	</bean>
 
+	<bean id="permissionGrantingStrategy"
+		  class="org.springframework.security.acls.domain.DefaultPermissionGrantingStrategy">
+		<constructor-arg>
+			<bean class="gemma.gsec.acl.domain.AuditLoggerImpl"/>
+		</constructor-arg>
+	</bean>
+
 	<bean id="aclDao" class="gemma.gsec.acl.domain.AclDaoImpl">
 		<constructor-arg ref="sessionFactory"/>
 		<constructor-arg ref="aclAuthorizationStrategy"/>
-		<constructor-arg ref="aclCache"/>
+		<constructor-arg ref="permissionGrantingStrategy"/>
 	</bean>
 	<bean id="aclService" class="gemma.gsec.acl.domain.AclServiceImpl">
 		<constructor-arg ref="aclDao"/>
@@ -28,19 +35,6 @@
 		<constructor-arg ref="sidRetrievalStrategy"/>
 		<!-- FIXME: make this a constructor argument, but that currently result in a circular dependency in Gemma -->
 		<property name="userManager" ref="userManager"/>
-	</bean>
-
-	<bean id="aclCache" class="org.springframework.security.acls.domain.EhCacheBasedAclCache">
-		<constructor-arg>
-			<bean class="org.springframework.cache.ehcache.EhCacheFactoryBean">
-				<property name="cacheManager" ref="ehcache"/>
-				<property name="cacheName" value="aclCache"/>
-				<property name="overflowToDisk" value="false"/>
-				<property name="maxElementsInMemory" value="50000"/>
-				<property name="timeToLive" value="3600"/>
-				<property name="timeToIdle" value="3600"/>
-			</bean>
-		</constructor-arg>
 	</bean>
 
 	<bean id="permissionEvaluator" class="org.springframework.security.acls.AclPermissionEvaluator">

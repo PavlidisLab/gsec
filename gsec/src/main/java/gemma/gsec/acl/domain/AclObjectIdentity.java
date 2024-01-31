@@ -25,6 +25,7 @@ import org.springframework.security.acls.model.Sid;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
+import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -49,6 +50,7 @@ public class AclObjectIdentity implements ObjectIdentity {
 
     private AclSid ownerSid;
 
+    @Nullable
     private AclObjectIdentity parentObject;
 
     private Set<AclEntry> entries = new HashSet<>();
@@ -138,11 +140,12 @@ public class AclObjectIdentity implements ObjectIdentity {
         this.ownerSid = ( AclSid ) ownerSid;
     }
 
+    @Nullable
     public AclObjectIdentity getParentObject() {
         return parentObject;
     }
 
-    public void setParentObject( AclObjectIdentity parentObject ) {
+    public void setParentObject( @Nullable AclObjectIdentity parentObject ) {
         assert parentObject != this && !this.equals( parentObject );
         this.parentObject = parentObject;
     }
@@ -168,6 +171,6 @@ public class AclObjectIdentity implements ObjectIdentity {
 
     @Override
     public String toString() {
-        return String.format( "%s[Type: %s; Identifier: %s]", this.getClass().getName(), this.type, this.identifier );
+        return String.format( "%s[Id: %d; Type: %s; Identifier: %s]", this.getClass().getName(), this.id, this.type, this.identifier );
     }
 }

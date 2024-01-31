@@ -15,12 +15,11 @@
 package gemma.gsec.acl.domain;
 
 import org.springframework.security.acls.jdbc.LookupStrategy;
-import org.springframework.security.acls.model.MutableAcl;
-import org.springframework.security.acls.model.ObjectIdentity;
-import org.springframework.security.acls.model.Sid;
+import org.springframework.security.acls.model.Acl;
+import org.springframework.security.acls.model.ChildrenExistException;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nullable;
-import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -29,22 +28,56 @@ import java.util.List;
  */
 public interface AclDao extends LookupStrategy {
 
-    AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, boolean entriesInheriting );
-
-    void delete( ObjectIdentity objectIdentity, boolean deleteChildren );
-
-    void delete( Sid sid );
-
+    /**
+     * Find an ACL object identity confirming to the given object identity.
+     * <p>
+     * If the provided object as a non-null ID, it is used, otherwise the type and identifier is used.
+     */
     @Nullable
-    AclObjectIdentity find( ObjectIdentity oid );
+    AclObjectIdentity findObjectIdentity( AclObjectIdentity objectIdentity );
 
+    /**
+     * Find all the children of the given object identity.
+     */
+    List<AclObjectIdentity> findChildren( AclObjectIdentity parentIdentity );
+
+    /**
+     * Create a new object identity.
+     */
+    @CheckReturnValue
+    AclObjectIdentity createObjectIdentity( AclObjectIdentity oid );
+
+    /**
+     * Update a given object identity so that it conforms to a given ACL object.
+     */
+    void updateObjectIdentity( AclObjectIdentity aclObjectIdentity, Acl acl );
+
+    /**
+     * Delete a given object identity.
+     *
+     * @param deleteChildren if true, the children are recursively deleted as well
+     * @throws ChildrenExistException if deleteChildren is false and there are children associated to the object
+     *                                identity, those must be removed beforehand
+     */
+    void deleteObjectIdentity( AclObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException;
+
+    /**
+     * Retrieve a SID conforming to the given object.
+     * <p>
+     * If the provided object as a non-null ID, it is used, otherwise either the principal or granted authority is used
+     * depending on the type.
+     */
     @Nullable
-    AclSid find( Sid sid );
+    AclSid findSid( AclSid sid );
 
-    List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity );
+    /**
+     * Create a given SID.
+     */
+    @CheckReturnValue
+    AclSid createSid( AclSid sid );
 
-    AclSid findOrCreate( Sid sid );
-
-    void update( MutableAcl acl );
-
+    /**
+     * Delete a given SID.
+     */
+    void deleteSid( AclSid sid );
 }

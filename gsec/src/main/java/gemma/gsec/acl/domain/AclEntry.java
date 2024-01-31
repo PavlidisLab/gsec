@@ -18,17 +18,10 @@
  */
 package gemma.gsec.acl.domain;
 
-import org.springframework.security.acls.domain.AccessControlEntryImpl;
 import org.springframework.security.acls.domain.DefaultPermissionFactory;
 import org.springframework.security.acls.domain.PermissionFactory;
-import org.springframework.security.acls.model.AccessControlEntry;
-import org.springframework.security.acls.model.Acl;
-import org.springframework.security.acls.model.Permission;
-import org.springframework.security.acls.model.Sid;
-import org.springframework.util.Assert;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
@@ -36,36 +29,22 @@ import java.util.Objects;
  *
  * @author paul
  */
-public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
-
-    private static final PermissionFactory permissionFactory = new DefaultPermissionFactory();
+public class AclEntry implements Serializable, Comparable<AclEntry> {
 
     /**
      * The serial version UID of this class. Needed for serialization.
      */
     private static final long serialVersionUID = -4697361841061166973L;
 
-    /**
-     * @param acl to be associated with the AccessControlEntries
-     */
-    public static List<AccessControlEntry> convert( List<AclEntry> entries, Acl acl ) {
-        List<AccessControlEntry> result = new ArrayList<>();
-        for ( AclEntry e : entries ) {
-            result.add( new AccessControlEntryImpl( e.id, acl, e.sid, permissionFactory.buildFromMask( e.mask ),
-                e.granting, false, false ) );
-        }
-        return result;
-    }
+    private static final PermissionFactory permissionFactory = new DefaultPermissionFactory();
 
     private Long id;
 
-    private Sid sid;
+    private AclSid sid;
 
     private boolean granting;
 
     private int mask;
-
-    private Acl acl;
 
     private int aceOrder;
 
@@ -74,18 +53,7 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
 
     }
 
-    public AclEntry( Acl acl, Sid sid, Permission permission, boolean granting ) {
-        Assert.notNull( acl, "Acl required" );
-        Assert.notNull( sid, "Sid required" );
-        Assert.notNull( permission, "Permission required" );
-        this.acl = acl;
-        this.sid = sid;
-        this.mask = permission.getMask();
-        this.granting = granting;
-    }
 
-
-    @Override
     public Long getId() {
         return this.id;
     }
@@ -94,25 +62,14 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
         this.id = id;
     }
 
-    @Override
-    public Permission getPermission() {
-        return permissionFactory.buildFromMask( mask );
-    }
-
-    public void setPermission( Permission permission ) {
-        this.mask = permission.getMask();
-    }
-
-    @Override
-    public Sid getSid() {
+    public AclSid getSid() {
         return this.sid;
     }
 
-    public void setSid( Sid sid ) {
+    public void setSid( AclSid sid ) {
         this.sid = sid;
     }
 
-    @Override
     public boolean isGranting() {
         return this.granting;
     }
@@ -127,11 +84,6 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
 
     public void setMask( int mask ) {
         this.mask = mask;
-    }
-
-    @Override
-    public Acl getAcl() {
-        return this.acl;
     }
 
     @SuppressWarnings("unused")
