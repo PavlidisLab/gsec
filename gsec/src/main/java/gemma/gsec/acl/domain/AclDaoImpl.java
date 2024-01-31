@@ -384,121 +384,26 @@ public class AclDaoImpl implements AclDao {
         // + " from db" );
         // }
 
-        Set<Long> parentIdsToLookup = new HashSet<>();
-        for ( AclObjectIdentity oi : queryR ) {
-
-            AclImpl parentAcl = null;
-            AclObjectIdentity parentObjectIdentity = oi.getParentObject();
-
-            if ( parentObjectIdentity != null ) {
-
-                if ( !results.containsKey( parentObjectIdentity.getId() ) ) {
-
-                    // try to find parent in the cache
-                    MutableAcl cachedParent = aclCache.getFromCache( parentObjectIdentity.getId() );
-
-                    if ( cachedParent == null ) {
-
-                        parentIdsToLookup.add( parentObjectIdentity.getId() );
-
-                        parentAcl = new AclImpl( parentObjectIdentity, aclAuthorizationStrategy, /* parent acl */null );
-
-                        parentAcl.getEntries()
-                                .addAll( AclEntry.convert( new ArrayList<>( oi.getEntries() ), parentAcl ) );
-                    } else {
-                        parentAcl = ( AclImpl ) cachedParent;
-
-                        // Pop into the acls map, so our convert method doesn't
-                        // need to deal with an unsynchronized AclCache, even though it might not be used directly.
-
-                        results.put( cachedParent.getId(), cachedParent );
-                    }
-
-                } else {
-                    parentAcl = ( AclImpl ) results.get( parentObjectIdentity.getId() );
-                }
-
-                assert parentAcl != null;
-            }
-
-            Acl acl = new AclImpl( oi, aclAuthorizationStrategy, parentAcl );
-
-            results.put( oi.getId(), acl );
-
-        }
-
-        // Lookup the parents
-        if ( parentIdsToLookup.size() > 0 ) {
-            loadAcls( results, parentIdsToLookup );
-        }
+        // at this point, ACLs identities and their parents are loaded, we need to create the ACLs themselves
 
         Map<ObjectIdentity, Acl> resultMap = new HashMap<>();
-        for ( Acl inputAcl : results.values() ) {
-            resultMap.put( inputAcl.getObjectIdentity(), inputAcl );
+        for ( AclObjectIdentity oi : queryR ) {
+            resultMap.put( oi, convertToAclUsingCache( oi ) );
         }
+
         return resultMap;
     }
 
     /**
-     * Load ACLs when we know the primary key of the objectIdentity. Recursively fill in the parentAcls.
-     *
-     * @param acls              the starting set of acls.
-     * @param objectIdentityIds primary keys of the object identities to be fetched. If these yield acls that are the
-     *                          parents of the given acls, they will be populated.
+     * Convert to ACL, possibly using the cache.
      */
-    private void loadAcls( final Map<Serializable, Acl> acls, final Set<Long> objectIdentityIds ) {
-        Assert.notNull( acls, "ACLs are required" );
-        Assert.notEmpty( objectIdentityIds, "Items to find now required" );
-
-        //noinspection unchecked
-        List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession()
-                .createQuery( "from AclObjectIdentity where id in (:ids)" )
-                .setParameterList( "ids", objectIdentityIds )
-                .list();
-
-        Set<Long> parentsToLookup = new HashSet<>();
-        for ( AclObjectIdentity o : queryR ) {
-            if ( o.getParentObject() != null ) {
-                assert !o.getParentObject().getId().equals( o.getId() );
-                parentsToLookup.add( o.getParentObject().getId() );
-            }
-            Acl acl = new AclImpl( o, aclAuthorizationStrategy, /* parentacl, to be filled in later */null );
-            acls.put( o.getId(), acl );
+    private Acl convertToAclUsingCache( AclObjectIdentity aoi ) {
+        MutableAcl acl = aclCache.getFromCache( aoi );
+        if ( acl == null ) {
+            acl = new AclImpl( aoi, aclAuthorizationStrategy,
+                aoi.getParentObject() != null ? convertToAclUsingCache( aoi.getParentObject() ) : null );
+            aclCache.putInCache( acl );
         }
-
-        /*
-         * Fill in the parent Acls for the acls that need them.
-         */
-        for ( Long oiid : objectIdentityIds ) {
-            MutableAcl acl = ( MutableAcl ) acls.get( oiid );
-
-            if ( acl.getParentAcl() != null ) {
-                // we already did it.
-                continue;
-            }
-
-            ObjectIdentity oi = acl.getObjectIdentity();
-            AclObjectIdentity aoi = ( AclObjectIdentity ) oi;
-
-            if ( aoi.getParentObject() != null ) {
-                // this used to be an assertion, source of failures not clear...
-                if ( !acls.containsKey( aoi.getParentObject().getId() ) ) {
-                    throw new IllegalStateException(
-                            "ACLs did not contain key for parent object identity of " + aoi + "( parent = " + aoi.getParentObject() + "); "
-                                    + "ACLs being inspected: " + StringUtils.collectionToDelimitedString( acls.values(), "\n" ) );
-                }
-                // end assertion
-
-                Acl parentAcl = acls.get( aoi.getParentObject().getId() );
-                assert !acl.equals( parentAcl );
-                acl.setParent( parentAcl );
-            }
-        }
-
-        // Recurse; Lookup the parents of the newly fetched Acls.
-        if ( parentsToLookup.size() > 0 ) {
-            loadAcls( acls, parentsToLookup );
-        }
+        return acl;
     }
-
 }
