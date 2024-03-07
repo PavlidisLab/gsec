@@ -26,7 +26,6 @@ import org.hibernate.sql.JoinType;
 import org.springframework.security.acls.domain.AclAuthorizationStrategy;
 import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 import javax.persistence.EntityNotFoundException;
 import java.io.Serializable;
@@ -102,8 +101,8 @@ public class AclDaoImpl implements AclDao {
         // delete any objectidentities owned
         Session session = sessionFactory.getCurrentSession();
         List<?> ownedOis = session
-                .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
-                .setParameter( "sid", toDelete ).list();
+            .createQuery( "select s from AclObjectIdentity oi join oi.ownerSid s where s = :sid  " )
+            .setParameter( "sid", toDelete ).list();
 
         if ( !ownedOis.isEmpty() ) {
             for ( Object oi : ownedOis ) {
@@ -114,7 +113,7 @@ public class AclDaoImpl implements AclDao {
 
         // delete any aclentries referring to this sid
         List<?> entries = session.createQuery( "select e from AclEntry e where e.sid = :sid" )
-                .setParameter( "sid", toDelete ).list();
+            .setParameter( "sid", toDelete ).list();
 
         for ( Object e : entries ) {
             session.delete( e );
@@ -128,11 +127,11 @@ public class AclDaoImpl implements AclDao {
     public AclObjectIdentity find( ObjectIdentity oid ) {
         Assert.isInstanceOf( AclObjectIdentity.class, oid );
         return ( AclObjectIdentity ) sessionFactory.getCurrentSession()
-                .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
-                .setParameter( "t", oid.getType() )
-                .setParameter( "i", oid.getIdentifier() )
-
-                .uniqueResult();
+            .createQuery( "from AclObjectIdentity where type=:t and identifier=:i" )
+            .setParameter( "t", oid.getType() )
+            .setParameter( "i", oid.getIdentifier() )
+            .setCacheable( true )
+            .uniqueResult();
     }
 
     @Override
@@ -141,15 +140,17 @@ public class AclDaoImpl implements AclDao {
         if ( sid instanceof AclPrincipalSid ) {
             AclPrincipalSid p = ( AclPrincipalSid ) sid;
             return ( AclSid ) sessionFactory.getCurrentSession()
-                    .createQuery( "from AclPrincipalSid where principal = :p" )
-                    .setParameter( "p", p.getPrincipal() )
-                    .uniqueResult();
+                .createQuery( "from AclPrincipalSid where principal = :p" )
+                .setParameter( "p", p.getPrincipal() )
+                .setCacheable( true )
+                .uniqueResult();
         } else if ( sid instanceof AclGrantedAuthoritySid ) {
             AclGrantedAuthoritySid g = ( AclGrantedAuthoritySid ) sid;
             return ( AclSid ) sessionFactory.getCurrentSession()
-                    .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
-                    .setParameter( "g", g.getGrantedAuthority() )
-                    .uniqueResult();
+                .createQuery( "from AclGrantedAuthoritySid where grantedAuthority = :g" )
+                .setParameter( "g", g.getGrantedAuthority() )
+                .setCacheable( true )
+                .uniqueResult();
         } else {
             throw new IllegalArgumentException( "Unsupported ACL SID type: " + sid.getClass() );
         }
@@ -168,8 +169,8 @@ public class AclDaoImpl implements AclDao {
 
         //noinspection unchecked
         return sessionFactory.getCurrentSession()
-                .createQuery( "from AclObjectIdentity o where o.parentObject = :po" )
-                .setParameter( "po", parentIdentity ).list();
+            .createQuery( "from AclObjectIdentity o where o.parentObject = :po" )
+            .setParameter( "po", parentIdentity ).list();
     }
 
     @Override
@@ -250,7 +251,7 @@ public class AclDaoImpl implements AclDao {
 
         // the ObjectIdentity might already be in the session.
         aclObjectIdentity = ( AclObjectIdentity ) sessionFactory.getCurrentSession()
-                .merge( aclObjectIdentity );
+            .merge( aclObjectIdentity );
 
         if ( acl.getParentAcl() != null ) {
 
@@ -303,7 +304,7 @@ public class AclDaoImpl implements AclDao {
 
         if ( aclObjectIdentity.getOwnerSid().getId() == null ) {
             aclObjectIdentity.setOwnerSid( requireNonNull( this.find( acl.getOwner() ),
-                    String.format( "Failed to locate owner SID %s for %s", aclObjectIdentity.getOwnerSid(), aclObjectIdentity ) ) );
+                String.format( "Failed to locate owner SID %s for %s", aclObjectIdentity.getOwnerSid(), aclObjectIdentity ) ) );
         }
 
         assert aclObjectIdentity.getOwnerSid() != null;
@@ -351,32 +352,30 @@ public class AclDaoImpl implements AclDao {
      * @param objectIdentities a batch of OIs to fetch ACLs for.
      */
     private Map<ObjectIdentity, Acl> loadAcls( final Collection<AclObjectIdentity> objectIdentities ) {
-        final Map<Serializable, Acl> results = new HashMap<>();
-
         // group by type so we can use in (...) clauses
         Map<String, Set<Serializable>> idsByType = new HashMap<>();
         for ( ObjectIdentity oi : objectIdentities ) {
             idsByType.computeIfAbsent( oi.getType(), k -> new HashSet<>() )
-                    .add( oi.getIdentifier() );
+                .add( oi.getIdentifier() );
         }
 
         Criterion[] clauses = new Criterion[idsByType.size()];
         int i = 0;
         for ( Map.Entry<String, Set<Serializable>> e : idsByType.entrySet() ) {
             clauses[i++] = Restrictions.and(
-                    Restrictions.eq( "type", e.getKey() ),
-                    Restrictions.in( "identifier", e.getValue() ) );
+                Restrictions.eq( "type", e.getKey() ),
+                Restrictions.in( "identifier", e.getValue() ) );
         }
 
         //noinspection unchecked
         List<AclObjectIdentity> queryR = sessionFactory.getCurrentSession()
-                .createCriteria( AclObjectIdentity.class )
-                // possibly has no entries yet, so left outer join?
-                .createAlias( "entries", "e", JoinType.LEFT_OUTER_JOIN )
-                .add( Restrictions.or( clauses ) )
-                .addOrder( Order.asc( "identifier" ) )
-                .addOrder( Order.asc( "e.aceOrder" ) )
-                .list();
+            .createCriteria( AclObjectIdentity.class )
+            // possibly has no entries yet, so left outer join?
+            .createAlias( "entries", "e", JoinType.LEFT_OUTER_JOIN )
+            .add( Restrictions.or( clauses ) )
+            .addOrder( Order.asc( "identifier" ) )
+            .addOrder( Order.asc( "e.aceOrder" ) )
+            .list();
 
         // this is okay if we haven't added the objects yet.
         // if ( queryR.size() < objectIdentities.size() ) {
