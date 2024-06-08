@@ -26,8 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
@@ -60,6 +59,12 @@ public class AclEntryCollectionVoterTest {
 
         public void test( Collection<Securable> securables ) {
         }
+
+        public void testGeneric( Collection<? extends Securable> securables ) {
+        }
+
+        public <T extends Securable> void testGeneric2( Collection<T> securables ) {
+        }
     }
 
     private AclService aclService;
@@ -90,6 +95,27 @@ public class AclEntryCollectionVoterTest {
         Method method = MyService.class.getMethod( "test", Collection.class );
         int result = voter.vote( auth, new SimpleMethodInvocation( null, method, collection ), Collections.singletonList( ca ) );
         assertEquals( AccessDecisionVoter.ACCESS_GRANTED, result );
+    }
+
+    @Test
+    public void testGenericCollection() throws NoSuchMethodException {
+        Collection<?> collection = Collections.singleton( mock( Securable.class ) );
+        Method method = MyService.class.getMethod( "testGeneric", Collection.class );
+        assertSame( collection, voter.getCollectionInstance( new SimpleMethodInvocation( null, method, collection ) ) );
+    }
+
+    @Test
+    public void testGenericCollection2() throws NoSuchMethodException {
+        Collection<?> collection = Collections.singleton( mock( Securable.class ) );
+        Method method = MyService.class.getMethod( "testGeneric2", Collection.class );
+        assertSame( collection, voter.getCollectionInstance( new SimpleMethodInvocation( null, method, collection ) ) );
+    }
+
+    @Test
+    public void testNullCollection() throws NoSuchMethodException {
+        Collection<?> collection = null;
+        Method method = MyService.class.getMethod( "testGeneric2", Collection.class );
+        assertNull( voter.getCollectionInstance( new SimpleMethodInvocation( null, method, collection ) ) );
     }
 
     @Test

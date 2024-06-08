@@ -229,12 +229,30 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
                 continue;
             }
 
+            // fast path, but does not work with generics
             if ( TypeUtils.isAssignable( this.getProcessDomainObjectClass(), elementType ) ) {
+                return coll;
+            }
+
+            // slow path, but works with generics
+            if ( areAllElementsAssignable( this.getProcessDomainObjectClass(), coll ) ) {
                 return coll;
             }
         }
 
         throw new AuthorizationServiceException( "Secure object: " + secureObject
             + " did not provide a Collection of " + this.getProcessDomainObjectClass() + "'s" );
+    }
+
+    protected boolean areAllElementsAssignable( Class<?> t, @Nullable Collection<?> coll ) {
+        if ( coll == null ) {
+            return true;
+        }
+        for ( Object o : coll ) {
+            if ( !t.isInstance( o ) ) {
+                return false;
+            }
+        }
+        return true;
     }
 }

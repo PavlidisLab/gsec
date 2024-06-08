@@ -29,10 +29,13 @@ public class AclEntryMapVoter extends AclEntryCollectionVoter {
         for ( int i = 0; i < args.length; i++ ) {
             if ( Map.class.isAssignableFrom( params[i] ) ) {
                 Type keyType = ( ( ParameterizedType ) types[i] ).getActualTypeArguments()[0];
+                Collection<?> mapKeys = args[i] != null ? ( ( Map<?, ?> ) args[i] ).keySet() : null;
                 if ( TypeUtils.isAssignable( getProcessDomainObjectClass(), keyType ) ) {
-                    return args[i] != null ? ( ( Map<?, ?> ) args[i] ).values() : null;
+                    return mapKeys;
                 }
-                return args[i] != null ? ( ( Map<?, ?> ) args[i] ).values() : null;
+                if ( areAllElementsAssignable( getProcessDomainObjectClass(), mapKeys ) ) {
+                    return mapKeys;
+                }
             }
         }
         throw new AuthorizationServiceException( "Secure object: " + secureObject

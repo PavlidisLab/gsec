@@ -29,8 +29,12 @@ public class AclEntryMapValueVoter extends AclEntryCollectionVoter {
         for ( int i = 0; i < args.length; i++ ) {
             if ( Map.class.isAssignableFrom( params[i] ) ) {
                 Type valueType = ( ( ParameterizedType ) types[i] ).getActualTypeArguments()[1];
+                Collection<?> mapValues = args[i] != null ? ( ( Map<?, ?> ) args[i] ).values() : null;
                 if ( TypeUtils.isAssignable( getProcessDomainObjectClass(), valueType ) ) {
-                    return args[i] != null ? ( ( Map<?, ?> ) args[i] ).values() : null;
+                    return mapValues;
+                }
+                if ( areAllElementsAssignable( getProcessDomainObjectClass(), mapValues ) ) {
+                    return mapValues;
                 }
             }
         }
