@@ -4,7 +4,7 @@
     <parent>
         <groupId>ubc.pavlab</groupId>
         <artifactId>pavlab-starter-parent</artifactId>
-        <version>1.2.11</version>
+        <version>1.2.14</version>
     </parent>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
@@ -350,6 +350,28 @@
                     <url>file:///space/web/maven-sites/${project.groupId}/${project.artifactId}-${project.version}</url>
                 </site>
             </distributionManagement>
+        </profile>
+        <profile>
+            <id>depcheck</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>versions-maven-plugin</artifactId>
+                        <version>2.16.2</version>
+                        <configuration>
+                            <dependencyExcludes>
+                                <dependencyExclude>org.hibernate:hibernate-core:*</dependencyExclude>
+                                <dependencyExclude>org.hibernate:hibernate-ehcache:*</dependencyExclude>
+                                <dependencyExclude>net.sf.ehcache:ehcache-core:*</dependencyExclude>
+                            </dependencyExcludes>
+                            <pluginDependencyExcludes>
+                                <pluginDependencyExclude>org.hibernate:hibernate-core:*</pluginDependencyExclude>
+                            </pluginDependencyExcludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
     <properties>
