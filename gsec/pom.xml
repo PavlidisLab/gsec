@@ -376,6 +376,6 @@
     </profiles>
     <properties>
         <spring.version>3.2.18.RELEASE</spring.version>
-        <spring.security.version>3.2.10.RELEASE</spring.security.version>
+        <spring.security.version>5.5.7</spring.security.version>
     </properties>
 </project>
