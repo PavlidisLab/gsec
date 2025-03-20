@@ -21,14 +21,15 @@ package gemma.gsec;
 import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
 import gemma.gsec.acl.domain.AclPrincipalSid;
 import gemma.gsec.acl.domain.AclService;
-import gemma.gsec.authentication.UserManager;
+import gemma.gsec.authentication.GroupManager;
+import gemma.gsec.authentication.UserDetailsManager;
+import gemma.gsec.authentication.UserService;
 import gemma.gsec.model.Securable;
 import gemma.gsec.model.UserGroup;
 import gemma.gsec.util.SecurityUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.access.vote.AuthenticatedVoter;
 import org.springframework.security.acls.domain.BasePermission;
 import org.springframework.security.acls.model.*;
@@ -42,6 +43,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Methods for changing security on objects, creating and modifying groups, checking security on objects.
@@ -62,33 +64,31 @@ public class SecurityServiceImpl implements SecurityService {
     private final SessionRegistry sessionRegistry;
     private final ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy;
     private final SidRetrievalStrategy sidRetrievalStrategy;
-    private UserManager userManager;
+    private final UserDetailsManager userDetailsManager;
+    private final GroupManager groupManager;
+    private final UserService userService;
 
-    public SecurityServiceImpl( AclService aclService, SessionRegistry sessionRegistry, ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy, SidRetrievalStrategy sidRetrievalStrategy ) {
+    public SecurityServiceImpl( AclService aclService, SessionRegistry sessionRegistry, ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy, SidRetrievalStrategy sidRetrievalStrategy, UserDetailsManager userDetailsManager, GroupManager groupManager, UserService userService ) {
         this.aclService = aclService;
         this.sessionRegistry = sessionRegistry;
         this.objectIdentityRetrievalStrategy = objectIdentityRetrievalStrategy;
         this.sidRetrievalStrategy = sidRetrievalStrategy;
+        this.userDetailsManager = userDetailsManager;
+        this.groupManager = groupManager;
+        this.userService = userService;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#addUserToGroup(java.lang.String, java.lang.String)
-     */
+
     @Override
-    public void addUserToGroup( String userName, String groupName ) {
-        this.userManager.addUserToGroup( userName, groupName );
+    public <T extends Securable> Map<T, Boolean> arePublic( Collection<T> securables ) {
+        return arePrivate( securables )
+            .entrySet().stream()
+            .collect( Collectors.toMap( Map.Entry::getKey, e -> !e.getValue() ) );
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#arePrivate(java.util.Collection)
-     */
     @Override
     public <T extends Securable> Map<T, Boolean> arePrivate( Collection<T> securables ) {
-        Map<T, Boolean> result = new HashMap<>();
+        Map<T, Boolean> result = new HashMap<>( securables.size() );
         Map<ObjectIdentity, T> objectIdentities = getObjectIdentities( securables );
 
         if ( objectIdentities.isEmpty() ) return result;
@@ -106,20 +106,14 @@ public class SecurityServiceImpl implements SecurityService {
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
-            boolean p = a != null && SecurityUtil.isPrivate( a );
-            result.put( objectIdentities.get( oi ), p );
+            result.put( objectIdentities.get( oi ), a != null && SecurityUtil.isPrivate( a ) );
         }
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#areShared(java.util.Collection)
-     */
     @Override
     public <T extends Securable> Map<T, Boolean> areShared( Collection<T> securables ) {
-        Map<T, Boolean> result = new HashMap<>();
+        Map<T, Boolean> result = new HashMap<>( securables.size() );
         Map<ObjectIdentity, T> objectIdentities = getObjectIdentities( securables );
 
         if ( objectIdentities.isEmpty() ) return result;
@@ -133,17 +127,11 @@ public class SecurityServiceImpl implements SecurityService {
 
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
-            boolean p = a != null && SecurityUtil.isShared( a );
-            result.put( objectIdentities.get( oi ), p );
+            result.put( objectIdentities.get( oi ), a != null && SecurityUtil.isShared( a ) );
         }
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#choosePrivate(java.util.Collection)
-     */
     @Override
     public <T extends Securable> Collection<T> choosePrivate( Collection<T> securables ) {
         Collection<T> result = new HashSet<>();
@@ -158,11 +146,6 @@ public class SecurityServiceImpl implements SecurityService {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#choosePublic(java.util.Collection)
-     */
     @Override
     public <T extends Securable> Collection<T> choosePublic( Collection<T> securables ) {
         Collection<T> result = new HashSet<>();
@@ -177,64 +160,26 @@ public class SecurityServiceImpl implements SecurityService {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#createGroup(java.lang.String)
-     */
+
     @Override
-    public void createGroup( String groupName ) {
+    public Collection<String> readableBy( Securable s ) {
+        Collection<String> allUsers = userDetailsManager.findAllUsers();
 
-        /*
-         * Nice if we can get around this uniqueness constraint...but I guess it's not easy.
-         */
-        if ( userManager.groupExists( groupName ) ) {
-            throw new IllegalArgumentException( "A group already exists with that name: " + groupName );
+        Collection<String> result = new HashSet<>();
+
+        for ( String u : allUsers ) {
+            if ( isReadableByUser( s, u ) ) {
+                result.add( u );
+            }
         }
 
-        /*
-         * We do make the groupAuthority unique.
-         */
-        String groupAuthority = groupName.toUpperCase() + "_" + randomGroupNameSuffix();
-
-        List<GrantedAuthority> auths = new ArrayList<>();
-        auths.add( new SimpleGrantedAuthority( groupAuthority ) );
-
-        this.userManager.createGroup( groupName, auths );
-        addUserToGroup( userManager.getCurrentUsername(), groupName );
-
-        // make sure all current and future members of the group will be able to see the group
-        // UserGroup group = userService.findGroupByName( groupName );
-        // if ( group != null ) { // really shouldn't be null
-        // this should be done by the AclAdvice. We can't do it here because permissions aren't yet set up!
-        // this.makeReadableByGroup( group, group.getName() );
-        // } else {
-        // log.error(
-        // "Loading group that was just created failed. Read permissions were not granted to group, see bug 2840." );
-        // }
-
+        return result;
     }
 
-    private static final String ALLOWED_CHARS_IN_GROUP_NAME_SUFFIX = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-
-    private String randomGroupNameSuffix() {
-        Random random = new Random();
-        char[] buffer = new char[32];
-        for ( int i = 0; i < buffer.length; i++ ) {
-            buffer[i] = ALLOWED_CHARS_IN_GROUP_NAME_SUFFIX.charAt( random.nextInt( ALLOWED_CHARS_IN_GROUP_NAME_SUFFIX.length() ) );
-        }
-        return new String( buffer );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#editableBy(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
     public Collection<String> editableBy( Securable s ) {
 
-        Collection<String> allUsers = userManager.findAllUsers();
+        Collection<String> allUsers = userDetailsManager.findAllUsers();
 
         Collection<String> result = new HashSet<>();
 
@@ -248,28 +193,12 @@ public class SecurityServiceImpl implements SecurityService {
 
     }
 
-    private MutableAcl getAcl( Securable s ) {
-        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
-        return ( MutableAcl ) aclService.readAclById( oi );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getAuthenticatedUserCount()
-     */
     @Override
-    public Integer getAuthenticatedUserCount() {
+    public int getAuthenticatedUserCount() {
         return this.sessionRegistry.getAllPrincipals().size();
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getAuthenticatedUserNames()
-     */
     @Override
-    @Secured("GROUP_ADMIN")
     public Collection<String> getAuthenticatedUserNames() {
         List<Object> allPrincipals = this.sessionRegistry.getAllPrincipals();
         Collection<String> result = new HashSet<>();
@@ -279,27 +208,21 @@ public class SecurityServiceImpl implements SecurityService {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getAvailableSids()
-     */
     @Override
-    @Secured("GROUP_ADMIN")
     public Collection<Sid> getAvailableSids() {
 
         Collection<Sid> results = new HashSet<>();
 
-        Collection<String> users = userManager.findAllUsers();
+        Collection<String> users = userDetailsManager.findAllUsers();
 
         for ( String u : users ) {
             results.add( new AclPrincipalSid( u ) );
         }
 
-        Collection<String> groups = userManager.findAllGroups();
+        Collection<String> groups = groupManager.findAllGroups();
 
         for ( String g : groups ) {
-            List<GrantedAuthority> ga = userManager.findGroupAuthorities( g );
+            List<GrantedAuthority> ga = groupManager.findGroupAuthorities( g );
             for ( GrantedAuthority grantedAuthority : ga ) {
                 results.add( new AclGrantedAuthoritySid( grantedAuthority.getAuthority() ) );
             }
@@ -315,63 +238,32 @@ public class SecurityServiceImpl implements SecurityService {
      * @return The authority e.g. GROUP_FISH_...
      */
     @Override
-    public String getGroupAuthorityNameFromGroupName( String groupName ) {
-        Collection<String> groups = checkForGroupAccessByCurrentuser( groupName );
-
+    public List<String> getGroupAuthoritiesNameFromGroupName( String groupName ) {
+        Collection<String> groups = checkForGroupAccessByCurrentUser( groupName );
         if ( !groups.contains( groupName ) && !SecurityUtil.isUserAdmin() ) {
             throw new AccessDeniedException( "User doesn't have access to that group" );
         }
-
-        List<GrantedAuthority> groupAuthorities = userManager.findGroupAuthorities( groupName );
-
-        if ( groupAuthorities == null || groupAuthorities.isEmpty() ) {
-            throw new IllegalStateException( "Group has no authorities" );
-        }
-
-        if ( groupAuthorities.size() > 1 ) {
-            throw new UnsupportedOperationException( "Sorry, groups can only have a single authority" );
-        }
-
-        GrantedAuthority ga = groupAuthorities.get( 0 );
-        return userManager.getRolePrefix() + ( ga.getAuthority() );
+        return groupManager.findGroupAuthorities( groupName ).stream()
+            .map( ga -> AuthorityConstants.ROLE_PREFIX + ga.getAuthority() )
+            .collect( Collectors.toList() );
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getGroupsEditableBy(java.util.Collection)
-     */
     @Override
     public <T extends Securable> Map<T, Collection<String>> getGroupsEditableBy( Collection<T> securables ) {
         Collection<String> groupNames = getGroupsUserCanView();
 
-        Map<T, Collection<String>> result = new HashMap<>();
-
-        List<Permission> write = new ArrayList<>();
-        write.add( BasePermission.WRITE );
-
-        List<Permission> admin = new ArrayList<>();
-        admin.add( BasePermission.ADMINISTRATION );
+        Map<T, Collection<String>> result = new HashMap<>( securables.size() );
 
         for ( String groupName : groupNames ) {
-            Map<T, Boolean> groupHasPermission = this.groupHasPermission( securables, write, groupName );
-
-            populateGroupsEditableBy( result, groupName, groupHasPermission );
-
-            groupHasPermission = this.groupHasPermission( securables, admin, groupName );
-
-            populateGroupsEditableBy( result, groupName, groupHasPermission );
-
+            populateGroupPermissions( result, groupName,
+                groupHasPermission( securables, Collections.singletonList( BasePermission.WRITE ), groupName ) );
+            populateGroupPermissions( result, groupName,
+                groupHasPermission( securables, Collections.singletonList( BasePermission.ADMINISTRATION ), groupName ) );
         }
 
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getGroupsEditableBy(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
     public Collection<String> getGroupsEditableBy( Securable s ) {
         Collection<String> groupNames = getGroupsUserCanView();
@@ -387,11 +279,6 @@ public class SecurityServiceImpl implements SecurityService {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getGroupsReadableBy(java.util.Collection)
-     */
     @Override
     public <T extends Securable> Map<T, Collection<String>> getGroupsReadableBy( Collection<T> securables ) {
 
@@ -401,30 +288,16 @@ public class SecurityServiceImpl implements SecurityService {
 
         Collection<String> groupNames = getGroupsUserCanView();
 
-        List<Permission> read = new ArrayList<>();
-        read.add( BasePermission.READ );
-
-        List<Permission> admin = new ArrayList<>();
-        admin.add( BasePermission.ADMINISTRATION );
-
         for ( String groupName : groupNames ) {
-            Map<T, Boolean> groupHasPermission = this.groupHasPermission( securables, read, groupName );
-
-            populateGroupsEditableBy( result, groupName, groupHasPermission );
-
-            groupHasPermission = this.groupHasPermission( securables, admin, groupName );
-
-            populateGroupsEditableBy( result, groupName, groupHasPermission );
+            populateGroupPermissions( result, groupName,
+                groupHasPermission( securables, Collections.singletonList( BasePermission.READ ), groupName ) );
+            populateGroupPermissions( result, groupName,
+                groupHasPermission( securables, Collections.singletonList( BasePermission.ADMINISTRATION ), groupName ) );
         }
 
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getGroupsReadableBy(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
     public Collection<String> getGroupsReadableBy( Securable s ) {
         Collection<String> groupNames = getGroupsUserCanView();
@@ -440,18 +313,13 @@ public class SecurityServiceImpl implements SecurityService {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getGroupsUserCanEdit(java.lang.String)
-     */
     @Override
     public Collection<String> getGroupsUserCanEdit( String userName ) {
         Collection<String> groupNames = getGroupsUserCanView();
 
         Collection<String> result = new HashSet<>();
         for ( String gname : groupNames ) {
-            UserGroup g = userManager.findGroupByName( gname );
+            UserGroup g = userService.findGroupByName( gname );
             if ( this.isEditableByUser( g, userName ) ) {
                 result.add( gname );
             }
@@ -461,23 +329,11 @@ public class SecurityServiceImpl implements SecurityService {
 
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getOwner(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
     public Sid getOwner( Securable s ) {
-        ObjectIdentity oi = this.objectIdentityRetrievalStrategy.getObjectIdentity( s );
-        Acl a = this.aclService.readAclById( oi );
-        return a.getOwner();
+        return getAcl( s ).getOwner();
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#getOwners(java.util.Collection)
-     */
     @Override
     public <T extends Securable> Map<T, Sid> getOwners( Collection<T> securables ) {
         Map<T, Sid> result = new HashMap<>();
@@ -506,82 +362,14 @@ public class SecurityServiceImpl implements SecurityService {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isEditable(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
-    public boolean isEditable( Securable s ) {
-
+    public boolean isOwnedByCurrentUser( Securable s ) {
         if ( !SecurityUtil.isUserLoggedIn() ) {
             return false;
         }
 
-        String currentUser = this.userManager.getCurrentUsername();
-
-        List<Permission> requiredPermissions = new ArrayList<>();
-
-        requiredPermissions.add( BasePermission.WRITE );
-        if ( hasPermission( s, requiredPermissions, currentUser ) ) {
-            return true;
-        }
-
-        requiredPermissions.clear();
-        requiredPermissions.add( BasePermission.ADMINISTRATION );
-        return hasPermission( s, requiredPermissions, currentUser );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isEditableByGroup(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
-    @Override
-    public boolean isEditableByGroup( Securable s, String groupName ) {
-        List<Permission> requiredPermissions = new ArrayList<>();
-        requiredPermissions.add( BasePermission.WRITE );
-
-        if ( groupHasPermission( s, requiredPermissions, groupName ) ) {
-            return true;
-        }
-
-        requiredPermissions.clear();
-        requiredPermissions.add( BasePermission.ADMINISTRATION );
-        return groupHasPermission( s, requiredPermissions, groupName );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isEditableByUser(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
-    @Override
-    public boolean isEditableByUser( Securable s, String userName ) {
-        List<Permission> requiredPermissions = new ArrayList<>();
-        requiredPermissions.add( BasePermission.WRITE );
-        if ( hasPermission( s, requiredPermissions, userName ) ) {
-            return true;
-        }
-
-        requiredPermissions.clear();
-        requiredPermissions.add( BasePermission.ADMINISTRATION );
-        return hasPermission( s, requiredPermissions, userName );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isOwnedByCurrentUser(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
-    @Override
-    public boolean isOwnedByCurrentUser( Securable s ) {
-        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
-
         try {
-            Acl acl = this.aclService.readAclById( oi );
+            Acl acl = getAcl( s );
 
             Sid owner = acl.getOwner();
             if ( owner == null ) return false;
@@ -600,7 +388,7 @@ public class SecurityServiceImpl implements SecurityService {
             if ( owner instanceof AclPrincipalSid ) {
                 String ownerName = ( ( AclPrincipalSid ) owner ).getPrincipal();
 
-                if ( ownerName.equals( userManager.getCurrentUsername() ) ) {
+                if ( ownerName.equals( userDetailsManager.getCurrentUsername() ) ) {
                     return true;
                 }
 
@@ -611,7 +399,7 @@ public class SecurityServiceImpl implements SecurityService {
                  */
                 if ( SecurityUtil.isUserAdmin() ) {
                     try {
-                        Collection<? extends GrantedAuthority> authorities = userManager.loadUserByUsername( ownerName )
+                        Collection<? extends GrantedAuthority> authorities = userDetailsManager.loadUserByUsername( ownerName )
                             .getAuthorities();
                         for ( GrantedAuthority grantedAuthority : authorities ) {
                             if ( grantedAuthority.getAuthority().equals( AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) {
@@ -633,85 +421,73 @@ public class SecurityServiceImpl implements SecurityService {
         } catch ( NotFoundException nfe ) {
             return false;
         }
-
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isPrivate(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
+    @Override
+    public boolean isReadableByCurrentUser( Securable s ) {
+        if ( !SecurityUtil.isUserLoggedIn() ) {
+            return false;
+        }
+        return isReadableByUser( s, userDetailsManager.getCurrentUsername() );
+    }
+
+    @Override
+    public boolean isReadableByUser( Securable s, String userName ) {
+        return hasPermission( s, Collections.singletonList( BasePermission.READ ), userName )
+            || hasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), userName );
+    }
+
+    @Override
+    public boolean isReadableByGroup( Securable s, String groupName ) {
+        return groupHasPermission( s, Collections.singletonList( BasePermission.READ ), groupName )
+            || groupHasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), groupName );
+    }
+
+
+    @Override
+    public boolean isEditableByCurrentUser( Securable s ) {
+        if ( !SecurityUtil.isUserLoggedIn() ) {
+            return false;
+        }
+        return isEditableByUser( s, userDetailsManager.getCurrentUsername() );
+    }
+
+    @Override
+    public boolean isEditableByUser( Securable s, String userName ) {
+        return hasPermission( s, Collections.singletonList( BasePermission.WRITE ), userName )
+            || hasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), userName );
+    }
+
+    @Override
+    public boolean isEditableByGroup( Securable s, String groupName ) {
+        return groupHasPermission( s, Collections.singletonList( BasePermission.WRITE ), groupName )
+            || groupHasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), groupName );
+    }
+
+    @Override
+    public boolean isPublic( Securable s ) {
+        return !isPrivate( s );
+    }
+
     @Override
     public boolean isPrivate( Securable s ) {
-
         if ( s == null ) {
             log.warn( "Null object: considered public!" );
             return false;
         }
 
         /*
-         * Implementation note: this code mimics AclEntryVoter.vote, but in adminsitrative mode so no auditing etc
-         * happens.
-         */
-
-        Sid anonSid = new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-            AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) );
-
-        List<Sid> sids = new Vector<>();
-        sids.add( anonSid );
-
-        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
-
-        /*
          * Note: in theory, it should pay attention to the sid we ask for and return nothing if there is no acl.
          * However, the implementation actually ignores the sid argument.
          */
         try {
-            Acl acl = this.aclService.readAclById( oi, sids );
-
-            assert acl != null;
-
+            Acl acl = getAcl( s );
             return SecurityUtil.isPrivate( acl );
         } catch ( NotFoundException nfe ) {
             return true;
         }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isPublic(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
-    @Override
-    public boolean isPublic( Securable s ) {
-        return !isPrivate( s );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isReadableByGroup(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
-    @Override
-    public boolean isReadableByGroup( Securable s, String groupName ) {
-        List<Permission> requiredPermissions = new ArrayList<>();
-        requiredPermissions.add( BasePermission.READ );
-
-        if ( groupHasPermission( s, requiredPermissions, groupName ) ) {
-            return true;
-        }
-
-        requiredPermissions.clear();
-        requiredPermissions.add( BasePermission.ADMINISTRATION );
-        return groupHasPermission( s, requiredPermissions, groupName );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isShared(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
     public boolean isShared( Securable s ) {
         if ( s == null ) {
@@ -723,48 +499,19 @@ public class SecurityServiceImpl implements SecurityService {
          * happens.
          */
 
-        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
-
         /*
          * Note: in theory, it should pay attention to the sid we ask for and return nothing if there is no acl.
          * However, the implementation actually ignores the sid argument. See BasicLookupStrategy
          */
         try {
-            Acl acl = this.aclService.readAclById( oi );
-
+            Acl acl = getAcl( s );
             return SecurityUtil.isShared( acl );
         } catch ( NotFoundException nfe ) {
             return true;
         }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#isViewableByUser(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
     @Override
-    public boolean isViewableByUser( Securable s, String userName ) {
-        List<Permission> requiredPermissions = new ArrayList<>();
-        requiredPermissions.add( BasePermission.READ );
-        if ( hasPermission( s, requiredPermissions, userName ) ) {
-            return true;
-        }
-
-        requiredPermissions.clear();
-        requiredPermissions.add( BasePermission.ADMINISTRATION );
-        return hasPermission( s, requiredPermissions, userName );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#makeOwnedByUser(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
-    @Override
-    @Secured("GROUP_ADMIN")
     public void makeOwnedByUser( Securable s, String userName ) {
         MutableAcl acl = getAcl( s );
 
@@ -777,7 +524,7 @@ public class SecurityServiceImpl implements SecurityService {
         }
 
         // make sure user exists and is enabled.
-        UserDetails user = this.userManager.loadUserByUsername( userName );
+        UserDetails user = this.userDetailsManager.loadUserByUsername( userName );
         if ( !user.isEnabled() || !user.isAccountNonExpired() || !user.isAccountNonLocked() ) {
             throw new IllegalArgumentException( "User  " + userName + " has a disabled account" );
         }
@@ -792,25 +539,12 @@ public class SecurityServiceImpl implements SecurityService {
         addPrincipalAuthority( s, BasePermission.READ, userName );
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#makePrivate(java.util.Collection)
-     */
     @Override
     public void makePrivate( Collection<? extends Securable> objs ) {
-        for ( Securable s : objs ) {
-            makePrivate( s );
-        }
+        objs.forEach( this::makePrivate );
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#makePrivate(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
-    @Secured("ACL_SECURABLE_EDIT")
     public void makePrivate( Securable object ) {
         if ( object == null ) {
             return;
@@ -824,7 +558,7 @@ public class SecurityServiceImpl implements SecurityService {
         /*
          * Remove ACE for IS_AUTHENTICATED_ANOYMOUSLY, if it's there.
          */
-        String authorityToRemove = AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY;
+        String authorityToRemove = AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY;
 
         removeGrantedAuthority( object, BasePermission.READ, authorityToRemove );
 
@@ -835,25 +569,12 @@ public class SecurityServiceImpl implements SecurityService {
 
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#makePublic(java.util.Collection)
-     */
     @Override
     public void makePublic( Collection<? extends Securable> objs ) {
-        for ( Securable s : objs ) {
-            makePublic( s );
-        }
+        objs.forEach( this::makePublic );
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#makePublic(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
-    @Secured("ACL_SECURABLE_EDIT")
     public void makePublic( Securable object ) {
 
         if ( object == null ) {
@@ -872,7 +593,7 @@ public class SecurityServiceImpl implements SecurityService {
         MutableAcl acl = getAcl( object );
 
         acl.insertAce( acl.getEntries().size(), BasePermission.READ, new AclGrantedAuthoritySid(
-            new SimpleGrantedAuthority( AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY ) ), true );
+            new SimpleGrantedAuthority( AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) ), true );
 
         aclService.updateAcl( acl );
 
@@ -883,21 +604,14 @@ public class SecurityServiceImpl implements SecurityService {
 
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#makeReadableByGroup(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
     @Override
-    @Secured("ACL_SECURABLE_EDIT")
     public void makeReadableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
             throw new IllegalArgumentException( "'group' cannot be null" );
         }
 
-        Collection<String> groups = checkForGroupAccessByCurrentuser( groupName );
+        Collection<String> groups = checkForGroupAccessByCurrentUser( groupName );
 
         if ( !groups.contains( groupName ) && !SecurityUtil.isUserAdmin() ) {
             throw new AccessDeniedException( "User doesn't have access to that group" );
@@ -911,58 +625,39 @@ public class SecurityServiceImpl implements SecurityService {
 
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * ubic.gemma.security.SecurityService#makeUnreadableByGroup(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
     @Override
-    @Secured("ACL_SECURABLE_EDIT")
     public void makeUnreadableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
             throw new IllegalArgumentException( "'group' cannot be null" );
         }
 
-        removeGrantedAuthority( s, BasePermission.READ, getGroupAuthorityNameFromGroupName( groupName ) );
-        removeGrantedAuthority( s, BasePermission.WRITE, getGroupAuthorityNameFromGroupName( groupName ) );
+        for ( String authority : getGroupAuthoritiesNameFromGroupName( groupName ) ) {
+            removeGrantedAuthority( s, BasePermission.READ, authority );
+            removeGrantedAuthority( s, BasePermission.WRITE, authority );
+        }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * ubic.gemma.security.SecurityService#makeUnwriteableByGroup(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
     @Override
-    @Secured("ACL_SECURABLE_EDIT")
-    public void makeUnwriteableByGroup( Securable s, String groupName ) throws AccessDeniedException {
+    public void makeUneditableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
             throw new IllegalArgumentException( "'group' cannot be null" );
         }
 
-        removeGrantedAuthority( s, BasePermission.WRITE, getGroupAuthorityNameFromGroupName( groupName ) );
+        for ( String authority : getGroupAuthoritiesNameFromGroupName( groupName ) ) {
+            removeGrantedAuthority( s, BasePermission.WRITE, authority );
+        }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#makeWriteableByGroup(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
     @Override
-    @Secured("ACL_SECURABLE_EDIT")
-    public void makeWriteableByGroup( Securable s, String groupName ) throws AccessDeniedException {
+    public void makeEditableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
             throw new IllegalArgumentException( "'group' cannot be null" );
         }
 
-        Collection<String> groups = checkForGroupAccessByCurrentuser( groupName );
+        Collection<String> groups = checkForGroupAccessByCurrentUser( groupName );
 
         if ( !groups.contains( groupName ) && !SecurityUtil.isUserAdmin() ) {
             throw new AccessDeniedException( "User doesn't have access to that group" );
@@ -981,60 +676,68 @@ public class SecurityServiceImpl implements SecurityService {
 
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#readableBy(ubic.gemma.model.common.auditAndSecurity.Securable)
-     */
     @Override
-    @Secured("ACL_SECURABLE_EDIT")
-    public Collection<String> readableBy( Securable s ) {
-        Collection<String> allUsers = userManager.findAllUsers();
-
-        Collection<String> result = new HashSet<>();
-
-        for ( String u : allUsers ) {
-            if ( isViewableByUser( s, u ) ) {
-                result.add( u );
-            }
-        }
-
-        return result;
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#removeUserFromGroup(java.lang.String, java.lang.String)
-     */
-    @Override
-    public void removeUserFromGroup( String userName, String groupName ) {
-        this.userManager.removeUserFromGroup( userName, groupName );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.SecurityService#setOwner(ubic.gemma.model.common.auditAndSecurity.Securable,
-     * java.lang.String)
-     */
-    @Override
-    @Secured("GROUP_ADMIN")
     public void setOwner( Securable s, String userName ) {
-
         // make sure user exists and is enabled.
-        UserDetails user = this.userManager.loadUserByUsername( userName );
+        UserDetails user = this.userDetailsManager.loadUserByUsername( userName );
         if ( !user.isEnabled() || !user.isAccountNonExpired() || !user.isAccountNonLocked() ) {
             throw new IllegalArgumentException( "User  " + userName + " has a disabled account" );
         }
 
-        ObjectIdentity oi = this.objectIdentityRetrievalStrategy.getObjectIdentity( s );
-        MutableAcl a = ( MutableAcl ) this.aclService.readAclById( oi );
-
+        MutableAcl a = getAcl( s );
         a.setOwner( new AclPrincipalSid( userName ) );
-
         this.aclService.updateAcl( a );
+    }
 
+    @Override
+    public void createGroup( String groupName ) {
+
+        /*
+         * Nice if we can get around this uniqueness constraint...but I guess it's not easy.
+         */
+        if ( groupManager.groupExists( groupName ) ) {
+            throw new IllegalArgumentException( "A group already exists with that name: " + groupName );
+        }
+
+        /*
+         * We do make the groupAuthority unique.
+         */
+        String groupAuthority = groupName.toUpperCase() + "_" + randomGroupNameSuffix();
+
+        this.groupManager.createGroup( groupName, Collections.singletonList( new SimpleGrantedAuthority( groupAuthority ) ) );
+        addUserToGroup( userDetailsManager.getCurrentUsername(), groupName );
+
+        // make sure all current and future members of the group will be able to see the group
+        // UserGroup group = userService.findGroupByName( groupName );
+        // if ( group != null ) { // really shouldn't be null
+        // this should be done by the AclAdvice. We can't do it here because permissions aren't yet set up!
+        // this.makeReadableByGroup( group, group.getName() );
+        // } else {
+        // log.error(
+        // "Loading group that was just created failed. Read permissions were not granted to group, see bug 2840." );
+        // }
+
+    }
+
+    @Override
+    public void addUserToGroup( String userName, String groupName ) {
+        this.groupManager.addUserToGroup( userName, groupName );
+    }
+
+    @Override
+    public void removeUserFromGroup( String userName, String groupName ) {
+        this.groupManager.removeUserFromGroup( userName, groupName );
+    }
+
+    private static final String ALLOWED_CHARS_IN_GROUP_NAME_SUFFIX = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+
+    private String randomGroupNameSuffix() {
+        Random random = new Random();
+        char[] buffer = new char[32];
+        for ( int i = 0; i < buffer.length; i++ ) {
+            buffer[i] = ALLOWED_CHARS_IN_GROUP_NAME_SUFFIX.charAt( random.nextInt( ALLOWED_CHARS_IN_GROUP_NAME_SUFFIX.length() ) );
+        }
+        return new String( buffer );
     }
 
     /**
@@ -1043,22 +746,14 @@ public class SecurityServiceImpl implements SecurityService {
      * @param groupName e.g. "GROUP_JOESLAB"
      */
     private void addGroupAuthority( Securable s, Permission permission, String groupName ) {
-        MutableAcl acl = getAcl( s );
-
-        List<GrantedAuthority> groupAuthorities = userManager.findGroupAuthorities( groupName );
-
+        List<GrantedAuthority> groupAuthorities = groupManager.findGroupAuthorities( groupName );
         if ( groupAuthorities == null || groupAuthorities.isEmpty() ) {
             throw new IllegalStateException( "Group has no authorities" );
         }
-
-        if ( groupAuthorities.size() > 1 ) {
-            throw new UnsupportedOperationException( "Sorry, groups can only have a single authority" );
+        MutableAcl acl = getAcl( s );
+        for ( GrantedAuthority ga : groupAuthorities ) {
+            acl.insertAce( acl.getEntries().size(), permission, new AclGrantedAuthoritySid( AuthorityConstants.ROLE_PREFIX + ga ), true );
         }
-
-        GrantedAuthority ga = groupAuthorities.get( 0 );
-
-        acl.insertAce( acl.getEntries().size(), permission, new AclGrantedAuthoritySid( userManager.getRolePrefix()
-            + ga ), true );
         aclService.updateAcl( acl );
     }
 
@@ -1074,11 +769,11 @@ public class SecurityServiceImpl implements SecurityService {
     /**
      * Check if the current user can access the given group.
      */
-    private Collection<String> checkForGroupAccessByCurrentuser( String groupName ) {
+    private Collection<String> checkForGroupAccessByCurrentUser( String groupName ) {
         if ( groupName.equals( AuthorityConstants.ADMIN_GROUP_NAME ) ) {
             throw new AccessDeniedException( "Attempt to mess with ADMIN privileges denied" );
         }
-        return userManager.findGroupsForUser( userManager.getCurrentUsername() );
+        return groupManager.findGroupsForUser( userDetailsManager.getCurrentUsername() );
     }
 
     /**
@@ -1088,95 +783,59 @@ public class SecurityServiceImpl implements SecurityService {
         Collection<String> groupNames;
         try {
             // administrator...
-            groupNames = userManager.findAllGroups();
+            groupNames = groupManager.findAllGroups();
         } catch ( AccessDeniedException e ) {
             // I'm not sure this actually happens. Usermanager.findAllGroups should just show all of the user's viewable
             // groups.
-            groupNames = userManager.findGroupsForUser( userManager.getCurrentUsername() );
+            groupNames = groupManager.findGroupsForUser( userDetailsManager.getCurrentUsername() );
         }
         return groupNames;
-    }
-
-    private <T extends Securable> Map<ObjectIdentity, T> getObjectIdentities( Collection<T> securables ) {
-        Map<ObjectIdentity, T> result = new HashMap<>();
-        for ( T s : securables ) {
-            result.put( objectIdentityRetrievalStrategy.getObjectIdentity( s ), s );
-        }
-        return result;
     }
 
     private <T extends Securable> Map<T, Boolean> groupHasPermission( Collection<T> securables,
         List<Permission> requiredPermissions, String groupName ) {
         Map<T, Boolean> result = new HashMap<>();
         Map<ObjectIdentity, T> objectIdentities = getObjectIdentities( securables );
-
-        List<GrantedAuthority> auths = userManager.findGroupAuthorities( groupName );
-
-        List<Sid> sids = new ArrayList<>();
-        for ( GrantedAuthority a : auths ) {
-            AclGrantedAuthoritySid sid = new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                userManager.getRolePrefix() + a.getAuthority() ) );
-            sids.add( sid );
-        }
-
         Map<ObjectIdentity, Acl> acls;
         try {
             acls = aclService.readAclsById( new Vector<>( objectIdentities.keySet() ) );
         } catch ( NotFoundException e ) {
             acls = Collections.emptyMap();
         }
-
         for ( ObjectIdentity oi : acls.keySet() ) {
             Acl a = acls.get( oi );
             try {
-                result.put( objectIdentities.get( oi ), a != null && a.isGranted( requiredPermissions, sids, true ) );
+                result.put( objectIdentities.get( oi ), a != null && a.isGranted( requiredPermissions, getGroupSids( groupName ), true ) );
             } catch ( NotFoundException ignore ) {
+                result.put( objectIdentities.get( oi ), false );
             }
         }
         return result;
     }
 
     private boolean groupHasPermission( Securable domainObject, List<Permission> requiredPermissions, String groupName ) {
-        ObjectIdentity objectIdentity = objectIdentityRetrievalStrategy.getObjectIdentity( domainObject );
-
-        List<GrantedAuthority> auths = userManager.findGroupAuthorities( groupName );
-
-        List<Sid> sids = new ArrayList<>();
-        for ( GrantedAuthority a : auths ) {
-            AclGrantedAuthoritySid sid = new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                userManager.getRolePrefix() + a.getAuthority() ) );
-            sids.add( sid );
-        }
-
         try {
             // Lookup only ACLs for SIDs we're interested in (this actually get them all)
-            Acl acl = aclService.readAclById( objectIdentity, sids );
+            Acl acl = getAcl( domainObject );
             // administrative mode = true
-            return acl.isGranted( requiredPermissions, sids, true );
+            return acl.isGranted( requiredPermissions, getGroupSids( groupName ), true );
         } catch ( NotFoundException ignore ) {
             return false;
         }
-
     }
 
     /*
      * Private method that really doesn't work unless you are admin
      */
     private boolean hasPermission( Securable domainObject, List<Permission> requiredPermissions, String userName ) {
-
-        // Obtain the OID applicable to the domain object
-        ObjectIdentity objectIdentity = objectIdentityRetrievalStrategy.getObjectIdentity( domainObject );
-
         // Obtain the SIDs applicable to the principal
-        UserDetails user = userManager.loadUserByUsername( userName );
+        UserDetails user = userDetailsManager.loadUserByUsername( userName );
         Authentication authentication = new UsernamePasswordAuthenticationToken( userName, user.getPassword(),
             user.getAuthorities() );
         List<Sid> sids = sidRetrievalStrategy.getSids( authentication );
 
-        Acl acl;
-
         try {
-            acl = aclService.readAclById( objectIdentity, sids );
+            Acl acl = getAcl( domainObject );
             // administrative mode = true
             return acl.isGranted( requiredPermissions, sids, true );
         } catch ( NotFoundException ignore ) {
@@ -1184,16 +843,11 @@ public class SecurityServiceImpl implements SecurityService {
         }
     }
 
-    private <T extends Securable> void populateGroupsEditableBy( Map<T, Collection<String>> result, String groupName,
-        Map<T, Boolean> groupHasPermission ) {
+    private <T extends Securable> void populateGroupPermissions( Map<T, Collection<String>> result, String groupName, Map<T, Boolean> groupHasPermission ) {
         for ( T s : groupHasPermission.keySet() ) {
             if ( groupHasPermission.get( s ) ) {
-                if ( !result.containsKey( s ) ) {
-                    result.put( s, new HashSet<String>() );
-                }
-                result.get( s ).add( groupName );
+                result.computeIfAbsent( s, k -> new HashSet<>() ).add( groupName );
             }
-
         }
     }
 
@@ -1260,7 +914,25 @@ public class SecurityServiceImpl implements SecurityService {
 
     }
 
-    public void setUserManager( UserManager userManager ) {
-        this.userManager = userManager;
+    private List<Sid> getGroupSids( String groupName ) {
+        List<GrantedAuthority> auths = groupManager.findGroupAuthorities( groupName );
+        List<Sid> sids = new ArrayList<>( auths.size() );
+        for ( GrantedAuthority a : auths ) {
+            sids.add( new AclGrantedAuthoritySid( new SimpleGrantedAuthority( AuthorityConstants.ROLE_PREFIX + a.getAuthority() ) ) );
+        }
+        return sids;
+    }
+
+    private MutableAcl getAcl( Securable s ) {
+        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
+        return ( MutableAcl ) aclService.readAclById( oi );
+    }
+
+    private <T extends Securable> Map<ObjectIdentity, T> getObjectIdentities( Collection<T> securables ) {
+        Map<ObjectIdentity, T> result = new HashMap<>();
+        for ( T s : securables ) {
+            result.put( objectIdentityRetrievalStrategy.getObjectIdentity( s ), s );
+        }
+        return result;
     }
 }

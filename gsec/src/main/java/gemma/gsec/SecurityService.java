@@ -19,28 +19,25 @@ import gemma.gsec.model.Securable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.acls.model.Acl;
 import org.springframework.security.acls.model.Sid;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
+ * High-level methods for security-related manipulations.
+ *
  * @author paul
  * @version $Id: SecurityService.java,v 1.98 2013/09/14 16:56:03 paul Exp $
  */
-@SuppressWarnings("unused")
 public interface SecurityService {
 
     /**
-     * This is defined in spring-security AuthenticationConfigBuilder, and can be set in the {@code <security:anonymous/>}
-     * configuration of the {@code <security:http/>} namespace config
+     * Check if the given securables are public.
      */
-    String ANONYMOUS = AuthorityConstants.ANONYMOUS_USER_NAME;
-
-    /**
-     * Add a given user to a group by name.
-     */
-    void addUserToGroup( String userName, String groupName );
+    <T extends Securable> Map<T, Boolean> arePublic( Collection<T> securables );
 
     /**
      * Check if the given securables are private.
@@ -48,7 +45,6 @@ public interface SecurityService {
      * @throws AuthorizationServiceException if the collection is empty, see comments in
      *                                       {@link AclEntryCollectionVoter AclCollectionEntryVoter}
      */
-    @Secured({ "ACL_SECURABLE_COLLECTION_READ" })
     <T extends Securable> Map<T, Boolean> arePrivate( Collection<T> securables );
 
     /**
@@ -57,15 +53,7 @@ public interface SecurityService {
      * @throws AuthorizationServiceException if the collection is empty, see comments in
      *                                       {@link AclEntryCollectionVoter AclCollectionEntryVoter}
      */
-    @Secured({ "ACL_SECURABLE_COLLECTION_READ" })
     <T extends Securable> Map<T, Boolean> areShared( Collection<T> securables );
-
-    /**
-     * Pick private securables.
-     *
-     * @return the subset which are private, if any
-     */
-    <T extends Securable> Collection<T> choosePrivate( Collection<T> securables );
 
     /**
      * Pick public securables.
@@ -75,9 +63,16 @@ public interface SecurityService {
     <T extends Securable> Collection<T> choosePublic( Collection<T> securables );
 
     /**
-     * If the group already exists, an exception will be thrown.
+     * Pick private securables.
+     *
+     * @return the subset which are private, if any
      */
-    void createGroup( String groupName );
+    <T extends Securable> Collection<T> choosePrivate( Collection<T> securables );
+
+    /**
+     * @return list of userNames of users who can read the given securable.
+     */
+    Collection<String> readableBy( Securable s );
 
     /**
      * Retrieve a list of users allowed to edit a given securable.
@@ -86,13 +81,14 @@ public interface SecurityService {
      * @throws AuthorizationServiceException if the collection is empty, see comments in
      *                                       {@link AclEntryCollectionVoter AclCollectionEntryVoter}
      */
-    @Secured({ "ACL_SECURABLE_READ" })
     Collection<String> editableBy( Securable s );
 
     /**
+     * Obtain the number of authenticated users.
+     * <p>
      * We make this available to anonymous
      */
-    Integer getAuthenticatedUserCount();
+    int getAuthenticatedUserCount();
 
     /**
      * @return user names
@@ -101,14 +97,14 @@ public interface SecurityService {
     Collection<String> getAuthenticatedUserNames();
 
     /**
+     * Obtain a collection of all availble security IDs (basically, user names and group authorities).
+     * <p>
      * This methods is only available to administrators.
-     *
-     * @return collection of all available security ids (basically, user names and group authorities.
      */
     @Secured("GROUP_ADMIN")
     Collection<Sid> getAvailableSids();
 
-    String getGroupAuthorityNameFromGroupName( String groupName );
+    List<String> getGroupAuthoritiesNameFromGroupName( String groupName );
 
     /**
      * @throws AuthorizationServiceException if the collection is empty, see comments in
@@ -124,38 +120,52 @@ public interface SecurityService {
     <T extends Securable> Map<T, Collection<String>> getGroupsReadableBy( Collection<T> securables );
 
     /**
-     * @return names of groups which have read access to the securable, limited to groups the current user can read.
+     * Obtain all the groups whose members can read a given object.
      */
-    @Secured({ "ACL_SECURABLE_READ" })
     Collection<String> getGroupsReadableBy( Securable s );
 
+    /**
+     * Obtain all the groups that the user can edit.
+     */
     Collection<String> getGroupsUserCanEdit( String userName );
 
-    @Secured("ACL_SECURABLE_READ")
+    /**
+     * Obtain the owner of a given object.
+     */
     Sid getOwner( Securable s );
 
     /**
+     * Obtain the owners of a collection of objects.
+     * <p>
      * Pretty much have to be either the owner of the securables or administrator to call this.
      *
      * @throws AccessDeniedException if the current user is not allowed to access the information.
      */
-    @Secured("ACL_SECURABLE_COLLECTION_READ")
     <T extends Securable> Map<T, Sid> getOwners( Collection<T> securables );
 
     /**
-     * @return true if the current user can edit the securable
+     * Determine if a securable is public (i.e. can be seen by anyone, including anonymous users).
+     *
+     * @see gemma.gsec.util.SecurityUtil#isPublic(Acl)
      */
-    @Secured("ACL_SECURABLE_READ")
-    boolean isEditable( Securable s );
-
-    @Secured("ACL_SECURABLE_READ")
-    boolean isEditableByGroup( Securable s, String groupName );
+    boolean isPublic( Securable s );
 
     /**
-     * @return true if the user has WRITE permissions or ADMIN
+     * Determine if a securable is shared (i.e. can be seen by any registered users).
+     *
+     * @see gemma.gsec.util.SecurityUtil#isShared(Acl)
      */
-    @Secured("ACL_SECURABLE_READ")
-    boolean isEditableByUser( Securable s, String userName );
+    boolean isShared( Securable s );
+
+    /**
+     * Determine if a securable is private (i.e. can only be seen by its owner or an administrator).
+     *
+     * @return true if anonymous users can view (READ) the object, false otherwise. If the object doesn't have an ACL,
+     * return true (be safe!)
+     * @see org.springframework.security.acls.jdbc.BasicLookupStrategy
+     * @see gemma.gsec.util.SecurityUtil#isPrivate(Acl)
+     */
+    boolean isPrivate( Securable s );
 
     /**
      * @return true if the owner is the same as the current authenticated user. Special case: if the owner is an
@@ -164,31 +174,82 @@ public interface SecurityService {
     boolean isOwnedByCurrentUser( Securable s );
 
     /**
-     * Convenience method to determine the visibility of an object.
-     *
-     * @return true if anonymous users can view (READ) the object, false otherwise. If the object doesn't have an ACL,
-     * return true (be safe!)
-     * @see org.springframework.security.acls.jdbc.BasicLookupStrategy
+     * Determine if the current user can read an object.
      */
-    boolean isPrivate( Securable s );
-
-    /**
-     * Convenience method to determine the visibility of an object.
-     *
-     * @return the negation of isPrivate().
-     */
-    boolean isPublic( Securable s );
-
-    @Secured("ACL_SECURABLE_READ")
-    boolean isReadableByGroup( Securable s, String groupName );
-
-    boolean isShared( Securable s );
+    boolean isReadableByCurrentUser( Securable s );
 
     /**
      * @return true if the given user can read the securable, false otherwise. (READ or ADMINISTRATION required)
      */
-    @Secured({ "ACL_SECURABLE_READ" })
-    boolean isViewableByUser( Securable s, String userName );
+    boolean isReadableByUser( Securable s, String userName );
+
+    /**
+     * Determine if members of a group is allowed to read an object.
+     */
+    boolean isReadableByGroup( Securable s, String groupName );
+
+    /**
+     * Determine if the current user can edit the securable.
+     */
+    boolean isEditableByCurrentUser( Securable s );
+
+    /**
+     * Determine if the given user is allowed to edit an object.
+     */
+    boolean isEditableByUser( Securable s, String userName );
+
+    /**
+     * Determine if the given group is allowed to edit an object.
+     */
+    boolean isEditableByGroup( Securable s, String groupName );
+
+    /**
+     * Make a collection of objects public.
+     */
+    @Secured("ACL_SECURABLE_COLLECTION_EDIT")
+    void makePublic( Collection<? extends Securable> objs );
+
+    /**
+     * Makes the object public
+     */
+    @Secured("ACL_SECURABLE_EDIT")
+    void makePublic( Securable object );
+
+    /**
+     * Make a collection of objects private.
+     */
+    @Secured("ACL_SECURABLE_COLLECTION_EDIT")
+    void makePrivate( Collection<? extends Securable> objs );
+
+    /**
+     * Makes the object private.
+     */
+    @Secured("ACL_SECURABLE_EDIT")
+    void makePrivate( Securable object );
+
+    /**
+     * Adds read permission for a given group.
+     */
+    @Secured("ACL_SECURABLE_EDIT")
+    void makeReadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
+
+    /**
+     * Remove read permissions; also removes write permissions.
+     */
+    @Secured("ACL_SECURABLE_EDIT")
+    void makeUnreadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
+
+    /**
+     * Remove write permissions. Leaves read permissions, if present.
+     */
+    @Secured("ACL_SECURABLE_EDIT")
+    void makeUneditableByGroup( Securable s, String groupName ) throws AccessDeniedException;
+
+    /**
+     * Adds write (and read) permissions.
+     */
+    @Secured("ACL_SECURABLE_EDIT")
+    void makeEditableByGroup( Securable s, String groupName ) throws AccessDeniedException;
 
     /**
      * Administrative method to allow a user to get access to an object. This is useful for cases where a data set is
@@ -201,65 +262,24 @@ public interface SecurityService {
     void makeOwnedByUser( Securable s, String userName );
 
     /**
-     * Make a collection of objects private.
-     */
-    void makePrivate( Collection<? extends Securable> objs );
-
-    /**
-     * Makes the object private.
-     */
-    @Secured("ACL_SECURABLE_EDIT")
-    void makePrivate( Securable object );
-
-    /**
-     * Make a collection of objects public.
-     */
-    void makePublic( Collection<? extends Securable> objs );
-
-    /**
-     * Makes the object public
-     */
-    @Secured("ACL_SECURABLE_EDIT")
-    void makePublic( Securable object );
-
-    /**
-     * Adds read permission for a given group.
-     */
-    @Secured("ACL_SECURABLE_EDIT")
-    void makeReadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
-
-    /**
-     * Remove read permissions; also removes write permissions.
-     *
-     * @param groupName, with or without GROUP_
-     */
-    @Secured("ACL_SECURABLE_EDIT")
-    void makeUnreadableByGroup( Securable s, String groupName ) throws AccessDeniedException;
-
-    /**
-     * Remove write permissions. Leaves read permissions, if present.
-     */
-    @Secured("ACL_SECURABLE_EDIT")
-    void makeUnwriteableByGroup( Securable s, String groupName ) throws AccessDeniedException;
-
-    /**
-     * Adds write (and read) permissions.
-     */
-    @Secured("ACL_SECURABLE_EDIT")
-    void makeWriteableByGroup( Securable s, String groupName ) throws AccessDeniedException;
-
-    /**
-     * @return list of userNames of users who can read the given securable.
-     */
-    @Secured("ACL_SECURABLE_EDIT")
-    Collection<String> readableBy( Securable s );
-
-    void removeUserFromGroup( String userName, String groupName );
-
-    /**
      * Change the 'owner' of an object to a specific user. Note that this doesn't support making the owner a
      * grantedAuthority.
      */
     @Secured("GROUP_ADMIN")
     void setOwner( Securable s, String userName );
+
+    /**
+     * If the group already exists, an exception will be thrown.
+     */
+    void createGroup( String groupName );
+
+    /**
+     * Add a given user to a group by name.
+     */
+    void addUserToGroup( String userName, String groupName );
+
+    /**
+     * Remove a user from a group.
+     */
+    void removeUserFromGroup( String userName, String groupName );
 }

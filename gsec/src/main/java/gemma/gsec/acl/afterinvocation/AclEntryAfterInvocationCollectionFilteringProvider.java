@@ -83,7 +83,7 @@ public class AclEntryAfterInvocationCollectionFilteringProvider extends org.spri
 
             // skip unsupported domain objects
             List<Object> retainedDomainObjects = domainObjects.stream()
-                .filter( domainObject -> domainObject != null && getProcessDomainObjectClass().isAssignableFrom( domainObject.getClass() ) )
+                .filter( getProcessDomainObjectClass()::isInstance )
                 .collect( Collectors.toList() );
 
             // compute the permissions in bulk
@@ -133,7 +133,7 @@ public class AclEntryAfterInvocationCollectionFilteringProvider extends org.spri
         List<ObjectIdentity> ois = getObjectIdentities( domainObjects );
         Map<ObjectIdentity, Acl> aclsById;
         try {
-            aclsById = aclService.readAclsById( ois );
+            aclsById = aclService.readAclsById( ois, sids );
         } catch ( NotFoundException e ) {
             aclsById = Collections.emptyMap();
         }

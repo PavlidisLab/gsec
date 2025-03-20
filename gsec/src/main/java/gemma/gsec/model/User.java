@@ -20,6 +20,7 @@
 package gemma.gsec.model;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.Date;
 
 /**
@@ -30,7 +31,7 @@ import java.util.Date;
  */
 public interface User extends Securable, SecuredNotChild, Serializable {
 
-    Boolean getEnabled();
+    boolean isEnabled();
 
     String getPassword();
 
@@ -43,4 +44,6 @@ public interface User extends Securable, SecuredNotChild, Serializable {
     String getUserName();
 
     String getEmail();
+
+    Collection<? extends UserGroup> getGroups();
 }

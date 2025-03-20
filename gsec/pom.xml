@@ -4,7 +4,7 @@
     <parent>
         <groupId>ubc.pavlab</groupId>
         <artifactId>pavlab-starter-parent</artifactId>
-        <version>1.2.15</version>
+        <version>1.2.19-SNAPSHOT</version>
     </parent>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
@@ -59,6 +59,10 @@
                     <artifactId>dom4j</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.common</groupId>
+            <artifactId>hibernate-commons-annotations</artifactId>
         </dependency>
         <dependency>
             <groupId>org.dom4j</groupId>
@@ -239,11 +243,31 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.6.3,)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <!-- FIXME: remove the upper bound once we migrated to Spring 5 -->
+                                    <version>[11,19)</version>
+                                </requireJavaVersion>
+                                <dependencyConvergence/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.1.0</version>
                 <configuration>
                     <target>
                         <echo message="******* Building ACL DDL file *******"/>
@@ -288,10 +312,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.3.2</version>
+                <version>3.11.2</version>
                 <configuration>
                     <quiet>true</quiet>
-                    <source>8</source>
                     <doclint>none</doclint>
                 </configuration>
             </plugin>
@@ -302,42 +325,27 @@
                     <argLine>-Dlog4j1.compatibility=true</argLine>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.18.0</version>
+                <configuration>
+                    <dependencyExcludes>
+                        <dependencyExclude>org.hibernate:hibernate-core:*</dependencyExclude>
+                        <dependencyExclude>org.hibernate:hibernate-ehcache:*</dependencyExclude>
+                        <dependencyExclude>net.sf.ehcache:ehcache-core:*</dependencyExclude>
+                    </dependencyExcludes>
+                    <pluginDependencyExcludes>
+                        <pluginDependencyExclude>org.hibernate:hibernate-core:*</pluginDependencyExclude>
+                    </pluginDependencyExcludes>
+                </configuration>
+            </plugin>
         </plugins>
-        <pluginManagement>
-            <plugins>
-                <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven
-                    build itself. -->
-                <plugin>
-                    <groupId>org.eclipse.m2e</groupId>
-                    <artifactId>lifecycle-mapping</artifactId>
-                    <version>1.0.0</version>
-                    <configuration>
-                        <lifecycleMappingMetadata>
-                            <pluginExecutions>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>org.apache.maven.plugins</groupId>
-                                        <artifactId>maven-antrun-plugin</artifactId>
-                                        <versionRange>[1.7,)</versionRange>
-                                        <goals>
-                                            <goal>run</goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore/>
-                                    </action>
-                                </pluginExecution>
-                            </pluginExecutions>
-                        </lifecycleMappingMetadata>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
     </build>
     <distributionManagement>
         <site>
             <id>pavlab</id>
-            <url>scpexe://frink.msl.ubc.ca/space/web/maven-sites/${project.groupId}/${project.artifactId}-${project.version}</url>
+            <url>scpexe://${pavlab.server}${pavlab.siteDir}/${project.groupId}/gemma-${project.version}</url>
         </site>
     </distributionManagement>
     <profiles>
@@ -347,35 +355,14 @@
             <distributionManagement>
                 <site>
                     <id>pavlab</id>
-                    <url>file:///space/web/maven-sites/${project.groupId}/${project.artifactId}-${project.version}</url>
+                    <url>file://${pavlab.repoDir}/${project.groupId}/gemma-${project.version}</url>
                 </site>
             </distributionManagement>
-        </profile>
-        <profile>
-            <id>depcheck</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>versions-maven-plugin</artifactId>
-                        <version>2.16.2</version>
-                        <configuration>
-                            <dependencyExcludes>
-                                <dependencyExclude>org.hibernate:hibernate-core:*</dependencyExclude>
-                                <dependencyExclude>org.hibernate:hibernate-ehcache:*</dependencyExclude>
-                                <dependencyExclude>net.sf.ehcache:ehcache-core:*</dependencyExclude>
-                            </dependencyExcludes>
-                            <pluginDependencyExcludes>
-                                <pluginDependencyExclude>org.hibernate:hibernate-core:*</pluginDependencyExclude>
-                            </pluginDependencyExcludes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
     <properties>
         <spring.version>3.2.18.RELEASE</spring.version>
         <spring.security.version>3.2.10.RELEASE</spring.security.version>
+        <mockito.version>5.15.2</mockito.version>
     </properties>
 </project>

@@ -41,7 +41,7 @@ public class UserDetailsImpl implements UserDetails {
     private static final long serialVersionUID = 1650537135541038216L;
 
     private String email;
-    private Boolean enabled;
+    private boolean enabled;
     private Collection<GrantedAuthority> grantedAuthorities = new HashSet<>();
 
     private final String password;
@@ -50,16 +50,7 @@ public class UserDetailsImpl implements UserDetails {
     private final Date signupTokenDatestamp;
     private final String userName;
 
-    /**
-     * @param password
-     * @param userName
-     * @param enabled
-     * @param grantedAuthorities
-     * @param email
-     * @param signupConfirmationKey
-     * @param signupConfirmationKeyDateStamp
-     */
-    public UserDetailsImpl( String password, String userName, Boolean enabled,
+    public UserDetailsImpl( String password, String userName, boolean enabled,
         @Nullable Collection<GrantedAuthority> grantedAuthorities, String email, String signupConfirmationKey,
         Date signupConfirmationKeyDateStamp ) {
         super();
@@ -76,40 +67,26 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     /**
-     * @param user
+     * Create a user details object from a {@link User} object.
      */
     public UserDetailsImpl( User user ) {
-        super();
         this.password = user.getPassword();
         this.userName = user.getUserName();
-        this.enabled = user.getEnabled();
+        this.enabled = user.isEnabled();
         this.email = user.getEmail();
         this.signupToken = user.getSignupToken();
         this.signupTokenDatestamp = user.getSignupTokenDatestamp();
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.userdetails.UserDetails#getAuthorities()
-     */
     @Override
     public Collection<GrantedAuthority> getAuthorities() {
         return this.grantedAuthorities;
     }
 
-    /**
-     * @return the email
-     */
     public String getEmail() {
         return email;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.userdetails.UserDetails#getPassword()
-     */
     @Override
     public String getPassword() {
         return password;
@@ -129,51 +106,26 @@ public class UserDetailsImpl implements UserDetails {
         return signupTokenDatestamp;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.userdetails.UserDetails#getUsername()
-     */
     @Override
     public String getUsername() {
         return userName;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.userdetails.UserDetails#isAccountNonExpired()
-     */
     @Override
     public boolean isAccountNonExpired() {
         return enabled;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.userdetails.UserDetails#isAccountNonLocked()
-     */
     @Override
     public boolean isAccountNonLocked() {
         return enabled;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.userdetails.UserDetails#isCredentialsNonExpired()
-     */
     @Override
     public boolean isCredentialsNonExpired() {
         return enabled;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.springframework.security.userdetails.UserDetails#isEnabled()
-     */
     @Override
     public boolean isEnabled() {
         return enabled;
@@ -189,7 +141,7 @@ public class UserDetailsImpl implements UserDetails {
     /**
      * @param enabled the enabled to set
      */
-    public void setEnabled( Boolean enabled ) {
+    public void setEnabled( boolean enabled ) {
         this.enabled = enabled;
     }
 

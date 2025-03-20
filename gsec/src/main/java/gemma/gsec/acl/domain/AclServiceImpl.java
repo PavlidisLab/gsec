@@ -20,16 +20,14 @@ package gemma.gsec.acl.domain;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hibernate.Session;
 import org.springframework.security.acls.model.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
-import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author paul
@@ -49,16 +47,9 @@ public class AclServiceImpl implements AclService {
     @Transactional
     public MutableAcl createAcl( ObjectIdentity objectIdentity ) throws AlreadyExistsException {
         // Check this object identity hasn't already been persisted
-        if ( aclDao.find( objectIdentity ) != null ) {
-            Acl acl = this.readAclById( objectIdentity );
-            if ( acl != null ) {
-                log.warn( "Create called on object identity that already exists, and acl could be loaded; " + acl );
-                /*
-                 * This happens ... why? When we set a parent object earlier than needed?
-                 */
-                // return ( MutableAcl ) acl;
-            }
-            throw new AlreadyExistsException( "Object identity '" + objectIdentity + "' already exists in the database" );
+        AclObjectIdentity aoi;
+        if ( ( aoi = aclDao.find( objectIdentity ) ) != null ) {
+            throw new AlreadyExistsException( "There is already an object identity for  " + objectIdentity + " in the database: " + aoi + "." );
         }
 
         // Need to retrieve the current principal, in order to know who "owns" this ACL (can be changed later on)
@@ -68,9 +59,9 @@ public class AclServiceImpl implements AclService {
         // Create the acl_object_identity row
         sid = aclDao.findOrCreate( sid );
         String type = objectIdentity.getType();
-        objectIdentity = aclDao.createObjectIdentity( type, objectIdentity.getIdentifier(), sid, true );
+        aoi = aclDao.createObjectIdentity( type, objectIdentity.getIdentifier(), sid, true );
 
-        Acl acl = this.readAclById( objectIdentity );
+        Acl acl = aclDao.readAclsById( Collections.singletonList( aoi ) ).get( aoi );
 
         return ( MutableAcl ) acl;
     }
@@ -78,46 +69,100 @@ public class AclServiceImpl implements AclService {
     @Override
     @Transactional
     public void deleteAcl( ObjectIdentity objectIdentity, boolean deleteChildren ) throws ChildrenExistException {
-        objectIdentity = aclDao.find( objectIdentity );
-        if ( objectIdentity != null ) {
-            aclDao.delete( objectIdentity, deleteChildren );
+        AclObjectIdentity aclObjectIdentity = aclDao.find( objectIdentity );
+        if ( aclObjectIdentity != null ) {
+            aclDao.delete( aclObjectIdentity, deleteChildren );
+        } else {
+            log.warn( "Unable to find ACL object identity for " + objectIdentity + ". No exception will be raised since this method is attempting to delete it." );
         }
     }
 
     @Override
     @Transactional
     public void deleteSid( Sid sid ) {
-        aclDao.delete( sid );
+        AclSid aclSid = aclDao.find( sid );
+        if ( aclSid != null ) {
+            aclDao.delete( aclSid );
+        } else {
+            log.warn( "Unable to find ACL sid for " + sid + ". No exception will be raised since this method is attempting to delete it." );
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ObjectIdentity> findChildren( final ObjectIdentity parentIdentity ) {
-        return aclDao.findChildren( parentIdentity );
+        AclObjectIdentity aclParentIdentity = getAclObject( parentIdentity );
+        return new ArrayList<>( aclDao.findChildren( aclParentIdentity ) );
     }
 
     @Override
     @Transactional(readOnly = true, noRollbackFor = NotFoundException.class)
     public Acl readAclById( ObjectIdentity object ) throws NotFoundException {
-        return doReadAcls( Collections.singletonList( object ), null ).get( object );
+        AclObjectIdentity aclObject = getAclObject( object );
+        Acl acl = aclDao.readAclsById( Collections.singletonList( aclObject ) ).get( aclObject );
+        if ( acl == null ) {
+            throw new NotFoundException( "Unable to find ACL information for " + aclObject + "." );
+        }
+        return acl;
     }
 
     @Override
     @Transactional(readOnly = true, noRollbackFor = NotFoundException.class)
     public Acl readAclById( ObjectIdentity object, List<Sid> sids ) throws NotFoundException {
-        return doReadAcls( Collections.singletonList( object ), sids ).get( object );
+        Acl acl = aclDao.readAclsById( Collections.singletonList( getAclObject( object ) ) )
+            .get( getAclObject( object ) );
+        if ( acl == null ) {
+            throw new NotFoundException( "Unable to find ACL information for " + getAclObject( object ) + "." );
+        }
+        return acl;
     }
 
     @Override
     @Transactional(readOnly = true, noRollbackFor = NotFoundException.class)
     public Map<ObjectIdentity, Acl> readAclsById( List<ObjectIdentity> objects ) throws NotFoundException {
-        return doReadAcls( objects, null );
+        if ( objects.isEmpty() ) {
+            return Collections.emptyMap();
+        }
+        List<AclObjectIdentity> aclObjects = getAclObjects( objects );
+        Map<AclObjectIdentity, Acl> results = aclDao.readAclsById( aclObjects );
+        if ( !results.keySet().containsAll( aclObjects ) ) {
+            throw new NotFoundException( "Unable to find ACL information for some of the requested objects." );
+        }
+        return new HashMap<>( results );
     }
 
     @Override
     @Transactional(readOnly = true, noRollbackFor = NotFoundException.class)
     public Map<ObjectIdentity, Acl> readAclsById( final List<ObjectIdentity> objects, final List<Sid> sids ) throws NotFoundException {
-        return doReadAcls( objects, sids );
+        if ( objects.isEmpty() ) {
+            return Collections.emptyMap();
+        }
+        List<AclObjectIdentity> aclObjects = getAclObjects( objects );
+        Map<AclObjectIdentity, Acl> results = aclDao.readAclsById( aclObjects );
+        if ( !results.keySet().containsAll( aclObjects ) ) {
+            throw new NotFoundException( "Unable to find ACL information for some of the requested objects." );
+        }
+        return new HashMap<>( results );
+    }
+
+    @Override
+    public Acl readAclById( ObjectIdentity objectIdentity, Session session ) throws NotFoundException {
+        AclObjectIdentity aclObject = aclDao.find( objectIdentity, session );
+        if ( aclObject == null ) {
+            throw new NotFoundException( "Unable to find ACL information for " + objectIdentity + "." );
+        }
+        Acl acl = aclDao.readAclsById( Collections.singletonList( aclObject ), session ).get( aclObject );
+        if ( acl == null ) {
+            throw new NotFoundException( "Unable to find ACL object identity for " + objectIdentity + "." );
+        }
+        return acl;
+    }
+
+    @Override
+    // this is only used for reading ACLs now
+    @Transactional(readOnly = true)
+    public Session openSession() {
+        return aclDao.openSession();
     }
 
     @Override
@@ -128,17 +173,24 @@ public class AclServiceImpl implements AclService {
         return acl;
     }
 
-    private Map<ObjectIdentity, Acl> doReadAcls( final List<ObjectIdentity> objects, @Nullable final List<Sid> sids ) throws NotFoundException {
-        if ( objects.isEmpty() ) {
-            return Collections.emptyMap();
-        }
-        Map<ObjectIdentity, Acl> result = aclDao.readAclsById( objects, sids );
-        if ( result.isEmpty() ) {
-            if ( objects.size() == 1 ) {
-                throw new NotFoundException( String.format( "Unable to find ACL information for %s.", objects.iterator().next() ) );
+    private List<AclObjectIdentity> getAclObjects( List<ObjectIdentity> objects ) throws NotFoundException {
+        Assert.notEmpty( objects );
+        ArrayList<AclObjectIdentity> aclObjects = new ArrayList<>( objects.size() );
+        for ( ObjectIdentity object : objects ) {
+            AclObjectIdentity aclObjectIdentity = aclDao.find( object );
+            if ( aclObjectIdentity != null ) {
+                aclObjects.add( aclObjectIdentity );
             } else {
-                throw new NotFoundException( "Unable to find ACL information for any of the supplied object identities." );
+                throw new NotFoundException( "Unable to find ACL object identity for " + object + "." );
             }
+        }
+        return aclObjects;
+    }
+
+    private AclObjectIdentity getAclObject( ObjectIdentity oi ) throws NotFoundException {
+        AclObjectIdentity result = aclDao.find( oi );
+        if ( result == null ) {
+            throw new NotFoundException( "Unable to find ACL object identity for " + oi + "." );
         }
         return result;
     }

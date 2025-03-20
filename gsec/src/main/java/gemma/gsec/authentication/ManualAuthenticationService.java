@@ -24,25 +24,16 @@ import org.springframework.security.core.AuthenticationException;
 public interface ManualAuthenticationService {
 
     /**
-     * @param username
-     * @param password
-     * @return
-     * @throws AuthenticationException
-     */
-    Authentication attemptAuthentication( String username, String password )
-        throws AuthenticationException;
-
-    /**
-     * Provide "anonymous" authentication.
-     */
-    void authenticateAnonymously();
-
-    /**
-     * Entry point for non-http request.
+     * Authenticate using the provided username and password.
      *
-     * @param username
-     * @param password
+     * @throws AuthenticationException if the authentication fails.
      */
-    boolean validateRequest( String username, String password );
+    Authentication authenticate( String username, String password ) throws AuthenticationException;
 
+    /**
+     * Perform an anonymous authentication.
+     *
+     * @throws AuthenticationException if anonymous authentication fails, likely due to a misconfiguration.
+     */
+    Authentication authenticateAnonymously() throws AuthenticationException;
 }

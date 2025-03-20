@@ -17,6 +17,7 @@ package gemma.gsec.util;
 import gemma.gsec.AuthorityConstants;
 import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
 import gemma.gsec.acl.domain.AclPrincipalSid;
+import org.springframework.security.access.vote.AuthenticatedVoter;
 import org.springframework.security.acls.domain.BasePermission;
 import org.springframework.security.acls.model.AccessControlEntry;
 import org.springframework.security.acls.model.Acl;
@@ -56,6 +57,10 @@ public class SecurityUtil {
         return ( owner instanceof AclPrincipalSid && ( ( AclPrincipalSid ) owner ).getPrincipal().equals( username ) );
     }
 
+    public static boolean isPublic( Acl acl ) {
+        return !isPrivate( acl );
+    }
+
     /**
      * Test whether the given ACL is constraining access to users who are at privileges above "anonymous".
      *
@@ -73,7 +78,7 @@ public class SecurityUtil {
             Sid sid = ace.getSid();
             if ( sid instanceof AclGrantedAuthoritySid ) {
                 String grantedAuthority = ( ( AclGrantedAuthoritySid ) sid ).getGrantedAuthority();
-                if ( grantedAuthority.equals( AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY ) && ace.isGranting() ) {
+                if ( grantedAuthority.equals( AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) && ace.isGranting() ) {
                     return false;
                 }
             }
@@ -168,8 +173,7 @@ public class SecurityUtil {
      * Returns true if the user is anonymous.
      */
     public static boolean isUserAnonymous() {
-        return authenticationTrustResolver.isAnonymous( getAuthentication() )
-            || getAuthentication().getPrincipal().equals( "anonymousUser" );
+        return authenticationTrustResolver.isAnonymous( getAuthentication() );
     }
 
     /**

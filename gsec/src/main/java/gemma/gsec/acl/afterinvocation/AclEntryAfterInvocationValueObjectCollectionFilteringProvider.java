@@ -63,7 +63,7 @@ public class AclEntryAfterInvocationValueObjectCollectionFilteringProvider exten
         List<ObjectIdentity> ois = getObjectIdentities( domainObjects );
         Map<ObjectIdentity, Acl> aclsById;
         try {
-            aclsById = aclService.readAclsById( ois );
+            aclsById = aclService.readAclsById( ois, sids );
         } catch ( NotFoundException e ) {
             aclsById = Collections.emptyMap();
         }

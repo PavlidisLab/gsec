@@ -3,8 +3,6 @@ package gemma.gsec.acl.afterinvocation;
 import gemma.gsec.acl.domain.AclObjectIdentity;
 import gemma.gsec.acl.domain.AclService;
 import gemma.gsec.model.Securable;
-import org.assertj.core.api.Assertions;
-import org.assertj.core.api.Assumptions;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.security.access.ConfigAttribute;
@@ -52,7 +50,7 @@ public class AclEntryAfterInvocationCollectionFilteringProviderTest {
     public void testWhenCollectionContainNullOrIncompatibleEntries() {
         Acl acl = mock( Acl.class );
         when( acl.isGranted( any(), any(), anyBoolean() ) ).thenReturn( true );
-        when( aclService.readAclsById( any() ) )
+        when( aclService.readAclsById( any(), any() ) )
             .thenAnswer( a -> a.getArgument( 0, Collection.class ).stream()
                 .distinct()
                 .collect( Collectors.toMap( o -> ( ObjectIdentity ) o, o -> acl ) ) );
@@ -89,7 +87,7 @@ public class AclEntryAfterInvocationCollectionFilteringProviderTest {
         AclObjectIdentity oid = new AclObjectIdentity( a );
         Acl acl = mock( Acl.class );
         when( acl.isGranted( any(), any(), anyBoolean() ) ).thenReturn( false );
-        when( aclService.readAclsById( Collections.singletonList( oid ) ) )
+        when( aclService.readAclsById( eq( Collections.singletonList( oid ) ), any() ) )
             .thenReturn( Collections.singletonMap( oid, acl ) );
         Collection<?> collection = new ArrayList<>( Collections.singletonList( a ) );
         assertThatThrownBy( () -> voter.decide( auth, null, Collections.singletonList( ca ), collection ) )

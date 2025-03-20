@@ -34,6 +34,7 @@ import org.hibernate.engine.spi.CascadingAction;
 import org.hibernate.persister.entity.EntityPersister;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataAccessException;
+import org.springframework.security.access.vote.AuthenticatedVoter;
 import org.springframework.security.acls.domain.BasePermission;
 import org.springframework.security.acls.model.*;
 import org.springframework.security.core.Authentication;
@@ -251,7 +252,7 @@ public abstract class BaseAclAdvice {
         if ( makeAnonymousReadable ) {
             if ( log.isDebugEnabled() ) log.debug( "Making readable by IS_AUTHENTICATED_ANONYMOUSLY: " + oi );
             grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                AuthorityConstants.IS_AUTHENTICATED_ANONYMOUSLY ) ) );
+                AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) ) );
         }
 
         /*
@@ -413,7 +414,7 @@ public abstract class BaseAclAdvice {
 
         /*
          * If the object is a user, make sure that user gets permissions even if the current user is not the same! In
-         * fact, user creation runs with GROUP_RUN_AS_ADMIN privileges.
+         * fact, user creation runs with RUN_AS_ADMIN privileges.
          */
 
         if ( create && objectIsAUser ) {

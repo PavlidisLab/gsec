@@ -14,7 +14,8 @@
  */
 package gemma.gsec.acl.domain;
 
-import org.springframework.security.acls.jdbc.LookupStrategy;
+import org.hibernate.Session;
+import org.springframework.security.acls.model.Acl;
 import org.springframework.security.acls.model.MutableAcl;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Sid;
@@ -22,29 +23,50 @@ import org.springframework.security.acls.model.Sid;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Paul
  * @version $Id: AclDao.java,v 1.1 2013/09/14 16:55:19 paul Exp $
  */
-public interface AclDao extends LookupStrategy {
+public interface AclDao {
 
-    AclObjectIdentity createObjectIdentity( String type, Serializable identifier, Sid sid, boolean entriesInheriting );
+    AclObjectIdentity createObjectIdentity( String type, Serializable identifier, AclSid sid, boolean entriesInheriting );
 
-    void delete( ObjectIdentity objectIdentity, boolean deleteChildren );
+    void delete( AclObjectIdentity objectIdentity, boolean deleteChildren );
 
-    void delete( Sid sid );
+    void delete( AclSid sid );
 
     @Nullable
     AclObjectIdentity find( ObjectIdentity oid );
 
     @Nullable
+    AclObjectIdentity find( ObjectIdentity objectIdentity, Session session );
+
+    @Nullable
     AclSid find( Sid sid );
 
-    List<ObjectIdentity> findChildren( ObjectIdentity parentIdentity );
+    @Nullable
+    AclSid find( Sid sid, Session session );
 
-    AclSid findOrCreate( Sid sid );
+    List<AclObjectIdentity> findChildren( AclObjectIdentity parentIdentity );
+
+    AclSid findOrCreate( AclSid sid );
 
     void update( MutableAcl acl );
 
+    /**
+     * Read ACLs for the given object identities.
+     */
+    Map<AclObjectIdentity, Acl> readAclsById( List<AclObjectIdentity> objects );
+
+    /**
+     * Read ACLs for the given object identities from the provided Hibernate session.
+     */
+    Map<AclObjectIdentity, Acl> readAclsById( List<AclObjectIdentity> objectIdentities, Session session );
+
+    /**
+     * Open a session to be used by {@link #readAclsById(List, Session)}.
+     */
+    Session openSession();
 }

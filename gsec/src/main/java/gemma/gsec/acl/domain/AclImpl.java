@@ -159,7 +159,7 @@ public class AclImpl implements OwnershipAcl {
                 "atIndexLocation must be less than or equal to the size of the AccessControlEntry collection" );
         }
 
-        AclEntry ace = new AclEntry( this, sid, permission, granting );
+        AclEntry ace = new AclEntry( this, ( AclSid ) sid, permission, granting );
 
         int osize = this.entries.size();
         synchronized ( entries ) {

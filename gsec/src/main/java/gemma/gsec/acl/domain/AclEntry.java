@@ -18,17 +18,13 @@
  */
 package gemma.gsec.acl.domain;
 
-import org.springframework.security.acls.domain.AccessControlEntryImpl;
 import org.springframework.security.acls.domain.DefaultPermissionFactory;
 import org.springframework.security.acls.domain.PermissionFactory;
 import org.springframework.security.acls.model.AccessControlEntry;
 import org.springframework.security.acls.model.Acl;
 import org.springframework.security.acls.model.Permission;
-import org.springframework.security.acls.model.Sid;
 import org.springframework.util.Assert;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -45,21 +41,9 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
      */
     private static final long serialVersionUID = -4697361841061166973L;
 
-    /**
-     * @param acl to be associated with the AccessControlEntries
-     */
-    public static List<AccessControlEntry> convert( List<AclEntry> entries, Acl acl ) {
-        List<AccessControlEntry> result = new ArrayList<>();
-        for ( AclEntry e : entries ) {
-            result.add( new AccessControlEntryImpl( e.id, acl, e.sid, permissionFactory.buildFromMask( e.mask ),
-                e.granting, false, false ) );
-        }
-        return result;
-    }
-
     private Long id;
 
-    private Sid sid;
+    private AclSid sid;
 
     private boolean granting;
 
@@ -74,7 +58,7 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
 
     }
 
-    public AclEntry( Acl acl, Sid sid, Permission permission, boolean granting ) {
+    public AclEntry( Acl acl, AclSid sid, Permission permission, boolean granting ) {
         Assert.notNull( acl, "Acl required" );
         Assert.notNull( sid, "Sid required" );
         Assert.notNull( permission, "Permission required" );
@@ -104,11 +88,11 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
     }
 
     @Override
-    public Sid getSid() {
+    public AclSid getSid() {
         return this.sid;
     }
 
-    public void setSid( Sid sid ) {
+    public void setSid( AclSid sid ) {
         this.sid = sid;
     }
 
@@ -156,16 +140,9 @@ public class AclEntry implements AccessControlEntry, Comparable<AclEntry> {
         return Objects.hash( granting, mask, sid );
     }
 
-    /*
-     * Note that this does not use the ID, to avoid getting duplicate entries.
-     *
-     *
-     * (non-Javadoc)
-     *
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     final public boolean equals( Object obj ) {
+        //  Note that this does not use the ID, to avoid getting duplicate entries.
         if ( this == obj ) return true;
         if ( obj == null ) return false;
         if ( getClass() != obj.getClass() ) return false;

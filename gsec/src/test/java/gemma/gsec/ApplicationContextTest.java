@@ -37,10 +37,6 @@ public class ApplicationContextTest extends AbstractJUnit4SpringContextTests {
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_USER" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_ADMIN" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_AGENT" ) ) );
-        assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_ANONYMOUS" ) ) );
         assertTrue( accessDecisionManager.supports( new SecurityConfig( "IS_AUTHENTICATED_ANONYMOUSLY" ) ) );
-        assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_RUN_AS_USER" ) ) );
-        assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_RUN_AS_ADMIN" ) ) );
-        assertTrue( accessDecisionManager.supports( new SecurityConfig( "GROUP_RUN_AS_ANONYMOUS" ) ) );
     }
 }

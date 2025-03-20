@@ -24,6 +24,7 @@ import gemma.gsec.model.UserGroup;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import javax.annotation.Nullable;
 import java.util.Collection;
 
 /**
@@ -57,15 +58,14 @@ public interface UserService {
     @Secured({ "GROUP_USER", "ACL_SECURABLE_EDIT" })
     void delete( UserGroup group );
 
-    /**
-     *
-     */
+    @Nullable
     @Secured({ "GROUP_USER", "AFTER_ACL_READ" })
-    User findByEmail( java.lang.String email );
+    User findByEmail( String email );
 
     /**
      * @return user or null if they don't exist.
      */
+    @Nullable
     User findByUserName( String userName ); // don't secure,
 
     // to allow login

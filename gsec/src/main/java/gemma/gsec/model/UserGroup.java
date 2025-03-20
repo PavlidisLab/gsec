@@ -37,10 +37,10 @@ public interface UserGroup extends SecuredNotChild {
     /**
      * A set of authorities conferred by the group membership.
      */
-    <T extends GroupAuthority> Collection<T> getAuthorities();
+    Collection<? extends GroupAuthority> getAuthorities();
 
     /**
      * A set of users that belong to the group.
      */
-    <T extends User> Collection<T> getGroupMembers();
+    Collection<? extends User> getGroupMembers();
 }

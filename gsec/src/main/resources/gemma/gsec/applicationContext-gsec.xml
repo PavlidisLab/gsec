@@ -5,8 +5,14 @@
 	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.2.xsd">
 
+	<bean id="anonymousAuthenticationProvider"
+		  class="org.springframework.security.authentication.AnonymousAuthenticationProvider">
+		<constructor-arg value="${gemma.anonymousAuth.key}"/>
+	</bean>
+
 	<bean id="manualAuthenticationService" class="gemma.gsec.authentication.ManualAuthenticationServiceImpl">
 		<constructor-arg ref="authenticationManager"/>
+		<constructor-arg value="${gemma.anonymousAuth.key}"/>
 	</bean>
 
 	<bean id="aclDao" class="gemma.gsec.acl.domain.AclDaoImpl">
@@ -26,8 +32,9 @@
 		<constructor-arg ref="sessionRegistry"/>
 		<constructor-arg ref="objectIdentityRetrievalStrategy"/>
 		<constructor-arg ref="sidRetrievalStrategy"/>
-		<!-- FIXME: make this a constructor argument, but that currently result in a circular dependency in Gemma -->
-		<property name="userManager" ref="userManager"/>
+		<constructor-arg ref="userDetailsManager"/>
+		<constructor-arg ref="groupManager"/>
+		<constructor-arg ref="userService"/>
 	</bean>
 
 	<bean id="aclCache" class="org.springframework.security.acls.domain.EhCacheBasedAclCache">
@@ -56,7 +63,7 @@
 		<property name="permissionEvaluator" ref="permissionEvaluator"/>
 	</bean>
 
-	<bean id="authenticationTrustResolver" class="gemma.gsec.authentication.AuthenticationTrustResolverImpl"/>
+	<bean id="authenticationTrustResolver" class="org.springframework.security.authentication.AuthenticationTrustResolverImpl"/>
 
 	<bean id="objectIdentityRetrievalStrategy" class="gemma.gsec.acl.ObjectIdentityRetrievalStrategyImpl"/>
 
@@ -228,7 +235,7 @@
 		<property name="grantOnTransient" value="true"/>
 	</bean>
 
-	<!-- Check: 'GROUP_RUN_AS_' guys are so we can allow some exposed methods to be run by users with lower privileges - such
+	<!-- Check: 'RUN_AS_' guys are so we can allow some exposed methods to be run by users with lower privileges - such
 		as servers or certain user operations that need to happen when users are logging in or signing up. Note that IS_AUTHENTICATED_ANONYMOUSLY
 		is not recognized by the role voter, but it is by other uses of this hierarchy. -->
 	<bean id="roleHierarchy" class="org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl">
@@ -236,12 +243,11 @@
 			<value>[CDATA[
 				GROUP_ADMIN > GROUP_USER
 				GROUP_RUN_AS_ADMIN > GROUP_ADMIN
-				GROUP_USER > GROUP_ANONYMOUS
-				GROUP_RUN_AS_USER >
-				GROUP_USER
+				GROUP_USER > IS_AUTHENTICATED_ANONYMOUSLY
+				GROUP_RUN_AS_USER > GROUP_USER
 				GROUP_ADMIN > GROUP_AGENT
-				GROUP_AGENT > GROUP_ANONYMOUS
-				GROUP_ANONYMOUS > IS_AUTHENTICATED_ANONYMOUSLY
+				GROUP_AGENT > IS_AUTHENTICATED_ANONYMOUSLY
+				GROUP_RUN_AS_AGENT > GROUP_AGENT
 				]]
 			</value>
 		</property>
@@ -422,6 +428,19 @@
 		<property name="processDomainObjectClass" value="gemma.gsec.model.SecureValueObject"/>
 	</bean>
 
+	<bean id="afterAclStreamRead"
+		  class="gemma.gsec.acl.afterinvocation.AclEntryAfterInvocationStreamFilteringProvider">
+		<constructor-arg ref="aclService"/>
+		<constructor-arg>
+			<list>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.ADMINISTRATION"/>
+				<util:constant static-field="org.springframework.security.acls.domain.BasePermission.READ"/>
+			</list>
+		</constructor-arg>
+		<property name="objectIdentityRetrievalStrategy" ref="objectIdentityRetrievalStrategy"/>
+		<property name="sidRetrievalStrategy" ref="sidRetrievalStrategy"/>
+		<property name="processDomainObjectClass" value="gemma.gsec.model.Securable"/>
+	</bean>
 
 	<!-- needed for the use of @Post.. -->
 	<bean id="postInvocationAdviceProvider"

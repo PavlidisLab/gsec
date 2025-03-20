@@ -30,7 +30,9 @@
             </props>
         </property>
     </bean>
-    <bean id="userManager" class="gemma.gsec.UserManagerImpl"/>
+    <bean id="userDetailsManager" class="gemma.gsec.UserDetailsManagerImpl"/>
+    <bean id="groupManager" class="gemma.gsec.GroupManagerImpl"/>
+    <bean id="userService" class="gemma.gsec.UserServiceImpl"/>
     <bean id="authenticationManager" class="org.springframework.security.authentication.ProviderManager">
         <constructor-arg>
             <list>

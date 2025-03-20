@@ -14,14 +14,24 @@
  */
 package gemma.gsec.acl.domain;
 
-import org.springframework.security.acls.model.MutableAclService;
-import org.springframework.security.acls.model.Sid;
+import org.hibernate.Session;
+import org.springframework.security.acls.model.*;
 
 /**
  * @author paul
  * @version $Id: AclService.java,v 1.1 2013/09/14 16:55:19 paul Exp $
  */
 public interface AclService extends MutableAclService {
+
+    /**
+     * Read ACLs from a specific Hibernate session.
+     */
+    Acl readAclById( ObjectIdentity objectIdentity, Session session ) throws NotFoundException;
+
+    /**
+     * Open an Hibernate session for use with {@link #readAclById(ObjectIdentity, Session)}
+     */
+    Session openSession();
 
     /**
      * Remove an {@link Sid} and all associated ACEs.

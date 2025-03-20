@@ -45,7 +45,7 @@ public class AclEntryAfterInvocationProviderTest {
         when( securableObject.getId() ).thenReturn( 1L );
         Acl acl = mock( Acl.class );
         when( acl.isGranted( any(), any(), anyBoolean() ) ).thenReturn( true );
-        when( aclService.readAclById( eq( new ObjectIdentityImpl( securableObject ) ), any() ) ).thenReturn( acl );
+        when( aclService.readAclById( eq( new ObjectIdentityImpl( securableObject ) ), anyList() ) ).thenReturn( acl );
         Object result = voter.decide( auth, null, Collections.singletonList( new SecurityConfig( "AFTER_ACL_READ" ) ), securableObject );
         assertThat( result ).isSameAs( securableObject );
     }
@@ -57,7 +57,7 @@ public class AclEntryAfterInvocationProviderTest {
         when( securableObject.getId() ).thenReturn( 1L );
         Acl acl = mock( Acl.class );
         when( acl.isGranted( any(), any(), anyBoolean() ) ).thenReturn( false );
-        when( aclService.readAclById( eq( new ObjectIdentityImpl( securableObject ) ), any() ) ).thenReturn( acl );
+        when( aclService.readAclById( eq( new ObjectIdentityImpl( securableObject ) ), anyList() ) ).thenReturn( acl );
         assertThatThrownBy( () -> voter.decide( auth, null, Collections.singletonList( new SecurityConfig( "AFTER_ACL_READ" ) ), securableObject ) )
             .isInstanceOf( AccessDeniedException.class );
     }
@@ -69,7 +69,7 @@ public class AclEntryAfterInvocationProviderTest {
         when( securableObject.getId() ).thenReturn( 1L );
         Acl acl = mock( Acl.class );
         when( acl.isGranted( any(), any(), anyBoolean() ) ).thenReturn( false );
-        when( aclService.readAclById( eq( new ObjectIdentityImpl( securableObject ) ), any() ) ).thenReturn( acl );
+        when( aclService.readAclById( eq( new ObjectIdentityImpl( securableObject ) ), anyList() ) ).thenReturn( acl );
         Object result = voter.decide( auth, null, Collections.singletonList( new SecurityConfig( "AFTER_ACL_READ_QUIET" ) ), securableObject );
         assertNull( result );
     }

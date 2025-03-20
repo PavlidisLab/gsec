@@ -18,8 +18,6 @@
  */
 package gemma.gsec;
 
-import org.springframework.security.access.vote.AuthenticatedVoter;
-
 /**
  * Defines constants used in GrantedAuthories. An authority is basically a marker of a level of access; in Gemma this
  * corresponds to the authority on a 'group' of users (UserGroup). There are currently three special groups:
@@ -32,15 +30,13 @@ import org.springframework.security.access.vote.AuthenticatedVoter;
  * @see org.springframework.security.core.GrantedAuthority
  */
 public class AuthorityConstants {
-    /**
-     * The name of the initial administrator. This name is hard-coded for system initialization in init-entities.sql.
-     */
-    public static final String REQUIRED_ADMINISTRATOR_USER_NAME = "administrator";
 
     /**
-     * The ID of the initial administrator. This name is hard-coded for system initialization in init-entities.sql.
+     * Prefix used for roles.
+     * <p>
+     * Spring uses {@code ROLE_} by default.
      */
-    public static final Long REQUIRED_ADMINISTRATOR_ID = 1L;
+    public static final String ROLE_PREFIX = "GROUP_";
 
     /**
      * The name of the administrator group authority. All administrators must be in this group.
@@ -60,26 +56,16 @@ public class AuthorityConstants {
 
     public static final String USER_GROUP_NAME = "Users";
 
-    public static final String IS_AUTHENTICATED_ANONYMOUSLY = AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY;
-
-    public static final String ANONYMOUS_USER_NAME = "anonymousUser";
-
-    /**
-     * Name of the 'group' for anonymous users. Note: we don't use this; you should use
-     * AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY instead.
-     *
-     * @see org.springframework.security.access.vote.AuthenticatedVoter#IS_AUTHENTICATED_ANONYMOUSLY
-     */
-    public static final String ANONYMOUS_GROUP_AUTHORITY = "GROUP_ANONYMOUS";
-
     /**
      * Used when we are running at elevated permissions.
      */
     public static final String RUN_AS_ADMIN_AUTHORITY = "GROUP_RUN_AS_ADMIN";
 
     /**
-     *
+     * Used when we are running at elevated permissions.
      */
+    public static final String RUN_AS_USER_AUTHORITY = "GROUP_RUN_AS_USER";
+
     public static final String AGENT_GROUP_AUTHORITY = "GROUP_AGENT";
 
     public static final String AGENT_GROUP_NAME = "Agents";

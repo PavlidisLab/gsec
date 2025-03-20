@@ -20,22 +20,20 @@ package gemma.gsec.authentication;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.context.MessageSource;
-import org.springframework.context.MessageSourceAware;
-import org.springframework.security.authentication.AnonymousAuthenticationProvider;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
+import org.springframework.security.access.vote.AuthenticatedVoter;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.event.InteractiveAuthenticationSuccessEvent;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Process authentication requests that come from outside a web context. This is used for command line interfaces, for
@@ -44,41 +42,23 @@ import java.io.IOException;
  * @author keshav
  * @version $Id: ManualAuthenticationServiceImpl.java,v 1.5 2013/09/22 18:50:42 paul Exp $
  */
-public class ManualAuthenticationServiceImpl implements ApplicationContextAware, InitializingBean,
-    ManualAuthenticationService, MessageSourceAware {
+public class ManualAuthenticationServiceImpl implements ManualAuthenticationService, ApplicationEventPublisherAware {
     private static final Log log = LogFactory.getLog( ManualAuthenticationServiceImpl.class.getName() );
 
+    private static final String ANONYMOUS_AUTHENTICATION_PRINCIPAL = "anonymousUser";
+
     private final AuthenticationManager authenticationManager;
+    private final String anonymousAuthenticationKey;
 
-    private ApplicationContext context;
-    private MessageSource messageSource;
+    private ApplicationEventPublisher eventPublisher;
 
-    public ManualAuthenticationServiceImpl( AuthenticationManager authenticationManager ) {
+    public ManualAuthenticationServiceImpl( AuthenticationManager authenticationManager, String anonymousAuthenticationKey ) {
         this.authenticationManager = authenticationManager;
+        this.anonymousAuthenticationKey = anonymousAuthenticationKey;
     }
 
-    /**
-     * We need to do this because normally the anonymous provider has
-     */
     @Override
-    public void afterPropertiesSet() {
-        AnonymousAuthenticationProvider aap = new AnonymousAuthenticationProvider(
-            AuthenticationUtils.ANONYMOUS_AUTHENTICATION_KEY );
-        aap.setMessageSource( messageSource );
-
-        ( ( ProviderManager ) this.authenticationManager ).getProviders().add( aap );
-
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.authentication.ManualAuthenticationService#attemptAuthentication(java.lang.String,
-     * java.lang.String)
-     */
-    @Override
-    public Authentication attemptAuthentication( String username, String password ) throws AuthenticationException {
-
+    public Authentication authenticate( String username, String password ) throws AuthenticationException {
         if ( username == null ) {
             username = "";
         }
@@ -89,89 +69,40 @@ public class ManualAuthenticationServiceImpl implements ApplicationContextAware,
 
         // now ready to log the user in
         Authentication authRequest = new UsernamePasswordAuthenticationToken( username, password );
-        return this.authenticationManager.authenticate( authRequest );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.authentication.ManualAuthenticationService#authenticateAnonymously()
-     */
-    @Override
-    public void authenticateAnonymously() {
-        AuthenticationUtils.anonymousAuthenticate( this.authenticationManager );
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * ubic.gemma.security.authentication.ManualAuthenticationService#setApplicationContext(org.springframework.context
-     * .ApplicationContext)
-     */
-    @Override
-    public void setApplicationContext( ApplicationContext applicationContext ) throws BeansException {
-        this.context = applicationContext;
+        return authenticate( authRequest );
     }
 
     @Override
-    public void setMessageSource( MessageSource messageSource ) {
-        this.messageSource = messageSource;
+    public Authentication authenticateAnonymously() throws AuthenticationException {
+        log.debug( "No authentication object in context, providing anonymous authentication" );
+        List<GrantedAuthority> gas = new ArrayList<>();
+
+        gas.add( new SimpleGrantedAuthority( AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) );
+
+        /*
+         * "anonymousUser" is defined in org.springframework.security.config.http.AuthenticationConfigBuilder (but is
+         * also configurable...).
+         */
+        return authenticate( new AnonymousAuthenticationToken( anonymousAuthenticationKey, ANONYMOUS_AUTHENTICATION_PRINCIPAL, gas ) );
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see ubic.gemma.security.authentication.ManualAuthenticationService#validateRequest(java.lang.String,
-     * java.lang.String)
-     */
-    @Override
-    public boolean validateRequest( String username, String password ) {
-
-        Authentication authResult = null;
-
+    private Authentication authenticate( Authentication authRequest ) throws AuthenticationException {
         try {
-            authResult = attemptAuthentication( username, password );
-            SecurityContextHolder.getContext().setAuthentication( authResult );
-        } catch ( AuthenticationException failed ) {
-            // Authentication failed
-            log.info( "**  Authentication failed for user " + username + ": " + failed.getMessage() + "  **" );
-            log.debug( failed );
-            unsuccessfulAuthentication( failed );
-            return false;
-        }
-
-        log.debug( "Updated SecurityContextHolder to contain the following Authentication: '" + authResult + "'" );
-        successfulAuthentication( authResult );
-        return true;
-    }
-
-    /**
-     * @param authResult
-     * @throws IOException
-     */
-    protected void successfulAuthentication( Authentication authResult ) {
-        if ( log.isDebugEnabled() ) {
-            log.debug( "Authentication success: " + authResult.toString() );
-        }
-
-        // Fire event
-        assert context != null;
-
-        if ( this.context != null ) {
-            context.publishEvent( new InteractiveAuthenticationSuccessEvent( authResult, this.getClass() ) );
-        } else {
-            log.fatal( "No context in which to place the authentication object" );
+            Authentication authResult = authenticationManager.authenticate( authRequest );
+            if ( this.eventPublisher != null ) {
+                eventPublisher.publishEvent( new InteractiveAuthenticationSuccessEvent( authResult, this.getClass() ) );
+            } else {
+                log.fatal( "No context in which to place the authentication object" );
+            }
+            return authResult;
+        } catch ( AuthenticationException e ) {
+            log.debug( "Authentication request failed.", e );
+            throw e;
         }
     }
 
-    /**
-     * @param failed
-     * @throws IOException
-     */
-    protected void unsuccessfulAuthentication( AuthenticationException failed ) {
-        log.debug( "Updated SecurityContextHolder to contain null Authentication" );
-        log.debug( "Authentication request failed: " + failed.toString() );
-
+    @Override
+    public void setApplicationEventPublisher( ApplicationEventPublisher applicationEventPublisher ) {
+        this.eventPublisher = applicationEventPublisher;
     }
 }
