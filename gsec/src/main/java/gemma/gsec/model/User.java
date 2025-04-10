@@ -19,7 +19,6 @@
 
 package gemma.gsec.model;
 
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.Date;
 
@@ -29,7 +28,7 @@ import java.util.Date;
  * @author ptan
  * @version $Id$
  */
-public interface User extends Securable, SecuredNotChild, Serializable {
+public interface User extends Securable, SecuredNotChild {
 
     boolean isEnabled();
 
