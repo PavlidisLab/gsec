@@ -125,8 +125,8 @@ public class AclServiceImpl implements AclService {
         }
         List<AclObjectIdentity> aclObjects = getAclObjects( objects );
         Map<AclObjectIdentity, Acl> results = aclDao.readAclsById( aclObjects );
-        if ( !results.keySet().containsAll( aclObjects ) ) {
-            throw new NotFoundException( "Unable to find ACL information for some of the requested objects." );
+        if ( results.isEmpty() ) {
+            throw new NotFoundException( "Unable to find ACL information for all of the requested objects." );
         }
         return new HashMap<>( results );
     }
@@ -139,8 +139,8 @@ public class AclServiceImpl implements AclService {
         }
         List<AclObjectIdentity> aclObjects = getAclObjects( objects );
         Map<AclObjectIdentity, Acl> results = aclDao.readAclsById( aclObjects );
-        if ( !results.keySet().containsAll( aclObjects ) ) {
-            throw new NotFoundException( "Unable to find ACL information for some of the requested objects." );
+        if ( results.isEmpty() ) {
+            throw new NotFoundException( "Unable to find ACL information for all of the requested objects." );
         }
         return new HashMap<>( results );
     }
@@ -180,8 +180,6 @@ public class AclServiceImpl implements AclService {
             AclObjectIdentity aclObjectIdentity = aclDao.find( object );
             if ( aclObjectIdentity != null ) {
                 aclObjects.add( aclObjectIdentity );
-            } else {
-                throw new NotFoundException( "Unable to find ACL object identity for " + object + "." );
             }
         }
         return aclObjects;
