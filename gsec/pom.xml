@@ -4,7 +4,7 @@
     <parent>
         <groupId>ubc.pavlab</groupId>
         <artifactId>pavlab-starter-parent</artifactId>
-        <version>1.2.21</version>
+        <version>1.2.22</version>
     </parent>
     <groupId>pavlab</groupId>
     <artifactId>gemma-gsec</artifactId>
@@ -162,7 +162,6 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -297,7 +296,7 @@
                     <dependency>
                         <groupId>org.dom4j</groupId>
                         <artifactId>dom4j</artifactId>
-                        <version>2.2.0</version>
+                        <version>${dom4j.version}</version>
                         <scope>runtime</scope>
                     </dependency>
                 </dependencies>
@@ -305,7 +304,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.11.2</version>
                 <configuration>
                     <quiet>true</quiet>
                     <doclint>none</doclint>
@@ -356,6 +354,5 @@
     <properties>
         <spring.version>3.2.18.RELEASE</spring.version>
         <spring.security.version>3.2.10.RELEASE</spring.security.version>
-        <mockito.version>5.17.0</mockito.version>
     </properties>
 </project>
