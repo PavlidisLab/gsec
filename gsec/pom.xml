@@ -307,6 +307,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-Dlog4j1.compatibility=true -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
             </plugin>
             <plugin>
