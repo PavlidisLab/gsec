@@ -313,16 +313,14 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>versions-maven-plugin</artifactId>
-                <version>2.18.0</version>
                 <configuration>
+                    <processDependencyManagement>false</processDependencyManagement>
+                    <processPluginDependencies>false</processPluginDependencies>
                     <dependencyExcludes>
                         <dependencyExclude>org.hibernate:hibernate-core:*</dependencyExclude>
                         <dependencyExclude>org.hibernate:hibernate-ehcache:*</dependencyExclude>
                         <dependencyExclude>net.sf.ehcache:ehcache-core:*</dependencyExclude>
                     </dependencyExcludes>
-                    <pluginDependencyExcludes>
-                        <pluginDependencyExclude>org.hibernate:hibernate-core:*</pluginDependencyExclude>
-                    </pluginDependencyExcludes>
                 </configuration>
             </plugin>
         </plugins>
