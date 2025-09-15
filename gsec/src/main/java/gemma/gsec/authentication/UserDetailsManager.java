@@ -1,8 +1,8 @@
 package gemma.gsec.authentication;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import javax.annotation.Nullable;
 import java.util.Collection;
 
 /**

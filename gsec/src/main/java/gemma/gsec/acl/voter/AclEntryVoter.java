@@ -2,12 +2,12 @@ package gemma.gsec.acl.voter;
 
 import gemma.gsec.acl.ObjectTransientnessRetrievalStrategy;
 import org.aopalliance.intercept.MethodInvocation;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.acls.model.AclService;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.core.Authentication;
 
-import javax.annotation.Nullable;
 import java.util.Collection;
 
 /**

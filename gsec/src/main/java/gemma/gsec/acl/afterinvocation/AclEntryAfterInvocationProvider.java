@@ -16,6 +16,7 @@ package gemma.gsec.acl.afterinvocation;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.acls.model.AclService;
@@ -41,8 +42,9 @@ public class AclEntryAfterInvocationProvider extends org.springframework.securit
         super( aclService, requirePermission );
     }
 
+    @Nullable
     @Override
-    public Object decide( Authentication authentication, Object object, Collection<ConfigAttribute> config,
+    public Object decide( Authentication authentication, @Nullable Object object, Collection<ConfigAttribute> config,
         Object returnedObject ) throws AccessDeniedException {
         try {
             return super.decide( authentication, object, config, returnedObject );

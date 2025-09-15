@@ -32,6 +32,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.engine.spi.CascadeStyle;
 import org.hibernate.engine.spi.CascadingAction;
 import org.hibernate.persister.entity.EntityPersister;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.access.vote.AuthenticatedVoter;
@@ -42,7 +43,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import javax.annotation.Nullable;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -123,6 +123,7 @@ public abstract class BaseAclAdvice {
     }
 
     // from gemma reflectionutil
+    @Nullable
     private Object getProperty( Object object, PropertyDescriptor descriptor ) throws IllegalAccessException,
         InvocationTargetException {
         Method getter = descriptor.getReadMethod();
@@ -484,6 +485,7 @@ public abstract class BaseAclAdvice {
      * If the object is a SecuredNotChild, then it will be treated as the parent. For example, ArrayDesigns associated
      * with an Experiment has 'parent status' for securables associated with the AD, such as LocalFiles.
      */
+    @Nullable
     private Acl chooseParentForAssociations( Object object, @Nullable Acl previousParent ) {
         Acl parentAcl;
         if ( SecuredNotChild.class.isAssignableFrom( object.getClass() )
@@ -523,6 +525,7 @@ public abstract class BaseAclAdvice {
         this.getAclService().deleteAcl( oi, true );
     }
 
+    @Nullable
     private MutableAcl getAcl( Securable s ) {
         ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
 
@@ -533,6 +536,7 @@ public abstract class BaseAclAdvice {
         }
     }
 
+    @Nullable
     private Object getPersistentObject( Object retValue, String methodName, Object[] args ) {
         if ( methodIsDelete( methodName ) || methodIsUpdate( methodName ) ) {
 
@@ -565,6 +569,7 @@ public abstract class BaseAclAdvice {
     /**
      * Recursively locate the actual secured parent.
      */
+    @Nullable
     private Securable locateSecuredParent( SecuredChild s ) {
         if ( s.getSecurityOwner() == null ) {
             return null;

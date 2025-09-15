@@ -20,6 +20,7 @@ package gemma.gsec.authentication;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.security.access.vote.AuthenticatedVoter;
@@ -50,6 +51,7 @@ public class ManualAuthenticationServiceImpl implements ManualAuthenticationServ
     private final AuthenticationManager authenticationManager;
     private final String anonymousAuthenticationKey;
 
+    @Nullable
     private ApplicationEventPublisher eventPublisher;
 
     public ManualAuthenticationServiceImpl( AuthenticationManager authenticationManager, String anonymousAuthenticationKey ) {
@@ -58,7 +60,7 @@ public class ManualAuthenticationServiceImpl implements ManualAuthenticationServ
     }
 
     @Override
-    public Authentication authenticate( String username, String password ) throws AuthenticationException {
+    public Authentication authenticate( @Nullable String username, @Nullable String password ) throws AuthenticationException {
         if ( username == null ) {
             username = "";
         }

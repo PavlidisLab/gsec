@@ -3,6 +3,7 @@ package gemma.gsec.acl.voter;
 import gemma.gsec.acl.ObjectTransientnessRetrievalStrategyImpl;
 import gemma.gsec.model.Securable;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.Nullable;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.security.access.AccessDecisionVoter;
@@ -19,7 +20,6 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.util.SimpleMethodInvocation;
 
-import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
@@ -115,7 +115,7 @@ public class AclEntryCollectionVoterTest {
     public void testNullCollection() throws NoSuchMethodException {
         Collection<?> collection = null;
         Method method = MyService.class.getMethod( "testGeneric2", Collection.class );
-        assertNull( voter.getCollectionInstance( new SimpleMethodInvocation( null, method, collection ) ) );
+        assertNull( voter.getCollectionInstance( new SimpleMethodInvocation( null, method, null ) ) );
     }
 
     @Test

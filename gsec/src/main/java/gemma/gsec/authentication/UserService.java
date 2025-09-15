@@ -21,10 +21,10 @@ package gemma.gsec.authentication;
 import gemma.gsec.model.GroupAuthority;
 import gemma.gsec.model.User;
 import gemma.gsec.model.UserGroup;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-import javax.annotation.Nullable;
 import java.util.Collection;
 
 /**
@@ -70,6 +70,7 @@ public interface UserService {
 
     // to allow login
 
+    @Nullable
     @Secured({ "GROUP_USER", "AFTER_ACL_READ" })
     UserGroup findGroupByName( String name );
 
@@ -85,6 +86,7 @@ public interface UserService {
     @Secured({ "GROUP_USER", "AFTER_ACL_COLLECTION_READ" })
     Collection<UserGroup> listAvailableGroups();
 
+    @Nullable
     @Secured({ "GROUP_USER", "AFTER_ACL_READ" })
     User load( Long id );
 

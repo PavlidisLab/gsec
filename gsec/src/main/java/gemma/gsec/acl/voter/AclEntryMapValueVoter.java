@@ -2,6 +2,7 @@ package gemma.gsec.acl.voter;
 
 import gemma.gsec.acl.domain.AclService;
 import org.aopalliance.intercept.MethodInvocation;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.util.TypeUtils;
@@ -21,11 +22,12 @@ public class AclEntryMapValueVoter extends AclEntryCollectionVoter {
         super( aclService, processConfigAttribute, requirePermission );
     }
 
+    @Nullable
     @Override
     protected Collection<?> getCollectionInstance( MethodInvocation secureObject ) {
         Class<?>[] params = secureObject.getMethod().getParameterTypes();
         Type[] types = secureObject.getMethod().getGenericParameterTypes();
-        Object[] args = secureObject.getArguments();
+        @Nullable Object[] args = secureObject.getArguments();
         for ( int i = 0; i < args.length; i++ ) {
             if ( Map.class.isAssignableFrom( params[i] ) ) {
                 Type valueType = ( ( ParameterizedType ) types[i] ).getActualTypeArguments()[1];

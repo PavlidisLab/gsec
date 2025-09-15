@@ -4,6 +4,7 @@ import gemma.gsec.acl.ObjectTransientnessRetrievalStrategyImpl;
 import gemma.gsec.acl.domain.AclService;
 import gemma.gsec.model.Securable;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.Nullable;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.security.access.ConfigAttribute;
@@ -16,7 +17,6 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.util.SimpleMethodInvocation;
 
-import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.util.Collections;
 

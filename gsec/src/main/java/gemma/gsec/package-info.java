@@ -70,7 +70,7 @@
  * security.</li>
  * </ul>
  */
-@ParametersAreNonnullByDefault
+@NullMarked
 package gemma.gsec;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+import org.jspecify.annotations.NullMarked;

@@ -2,6 +2,6 @@
  *
  */
 @NullMarked
-package gemma.gsec.authentication;
+package gemma.gsec;
 
 import org.jspecify.annotations.NullMarked;

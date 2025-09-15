@@ -20,6 +20,7 @@
 package gemma.gsec.acl.domain;
 
 import gemma.gsec.model.Securable;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Sid;
 import org.springframework.util.Assert;
@@ -49,6 +50,7 @@ public class AclObjectIdentity implements ObjectIdentity {
 
     private AclSid ownerSid;
 
+    @Nullable
     private AclObjectIdentity parentObject;
 
     private Set<AclEntry> entries = new HashSet<>();
@@ -138,6 +140,7 @@ public class AclObjectIdentity implements ObjectIdentity {
         this.ownerSid = ( AclSid ) ownerSid;
     }
 
+    @Nullable
     public AclObjectIdentity getParentObject() {
         return parentObject;
     }

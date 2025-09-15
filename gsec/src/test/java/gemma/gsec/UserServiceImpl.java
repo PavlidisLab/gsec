@@ -5,6 +5,7 @@ import gemma.gsec.authentication.UserService;
 import gemma.gsec.model.GroupAuthority;
 import gemma.gsec.model.User;
 import gemma.gsec.model.UserGroup;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -22,12 +23,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User create( User user ) throws UserExistsException {
-        return null;
+        return user;
     }
 
     @Override
     public UserGroup create( UserGroup group ) {
-        return null;
+        return group;
     }
 
     @Override
@@ -40,16 +41,19 @@ public class UserServiceImpl implements UserService {
 
     }
 
+    @Nullable
     @Override
     public User findByEmail( String email ) {
         return null;
     }
 
+    @Nullable
     @Override
     public User findByUserName( String userName ) {
         return null;
     }
 
+    @Nullable
     @Override
     public UserGroup findGroupByName( String name ) {
         return null;
@@ -70,6 +74,7 @@ public class UserServiceImpl implements UserService {
         return Collections.emptyList();
     }
 
+    @Nullable
     @Override
     public User load( Long id ) {
         return null;

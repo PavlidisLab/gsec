@@ -21,6 +21,7 @@ package gemma.gsec.acl.afterinvocation;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.security.access.ConfigAttribute;
@@ -51,7 +52,7 @@ public class AclEntryAfterInvocationCollectionFilteringProvider extends org.spri
         }
     }
 
-    private final ThreadLocal<Iterator<DomainObjectWithPermission>> domainObjectsWithPermission = new ThreadLocal<>();
+    private final ThreadLocal<@Nullable Iterator<DomainObjectWithPermission>> domainObjectsWithPermission = new ThreadLocal<>();
 
     @SuppressWarnings("unused")
     public AclEntryAfterInvocationCollectionFilteringProvider( AclService aclService, List<Permission> requirePermission ) {
@@ -64,7 +65,7 @@ public class AclEntryAfterInvocationCollectionFilteringProvider extends org.spri
     }
 
     @Override
-    public Object decide( Authentication authentication, Object object, Collection<ConfigAttribute> config,
+    public Object decide( Authentication authentication, @Nullable Object object, Collection<ConfigAttribute> config,
         Object returnedObject ) throws AccessDeniedException {
         for ( ConfigAttribute attr : config ) {
             if ( !this.supports( attr ) ) {
@@ -111,8 +112,9 @@ public class AclEntryAfterInvocationCollectionFilteringProvider extends org.spri
     @Override
     @Deprecated
     protected final boolean hasPermission( Authentication authentication, Object domainObject ) {
-        if ( domainObjectsWithPermission.get() != null ) {
-            DomainObjectWithPermission dowp = domainObjectsWithPermission.get().next();
+        Iterator<DomainObjectWithPermission> it;
+        if ( ( it = domainObjectsWithPermission.get() ) != null ) {
+            DomainObjectWithPermission dowp = it.next();
             if ( domainObject == dowp.domainObject ) {
                 return dowp.permission;
             } else {

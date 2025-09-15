@@ -1,28 +1,31 @@
 package gemma.gsec;
 
 import gemma.gsec.authentication.UserDetailsManager;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Collection;
+import java.util.Collections;
 
 public class UserDetailsManagerImpl implements UserDetailsManager {
 
     @Override
     public String changePasswordForUser( String email, String username, String newPassword ) {
-        return null;
+        return "1234";
     }
 
     @Override
     public Collection<String> findAllUsers() {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public String generateSignupToken( String username ) throws UsernameNotFoundException {
-        return null;
+        return "1234";
     }
 
+    @Nullable
     @Override
     public String getCurrentUsername() {
         return null;
@@ -75,6 +78,6 @@ public class UserDetailsManagerImpl implements UserDetailsManager {
 
     @Override
     public UserDetails loadUserByUsername( String s ) throws UsernameNotFoundException {
-        return null;
+        throw new UsernameNotFoundException( s );
     }
 }

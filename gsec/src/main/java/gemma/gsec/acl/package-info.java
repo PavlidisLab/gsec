@@ -1,7 +1,7 @@
 /**
  *
  */
-@ParametersAreNonnullByDefault
+@NullMarked
 package gemma.gsec.acl;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+import org.jspecify.annotations.NullMarked;

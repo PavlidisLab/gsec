@@ -14,11 +14,11 @@
  */
 package gemma.gsec.acl.domain;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.acls.domain.AclAuthorizationStrategy;
 import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
 
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -128,6 +128,7 @@ public class AclImpl implements OwnershipAcl {
         return this.objectIdentity.getOwnerSid();
     }
 
+    @Nullable
     @Override
     public Acl getParentAcl() {
         return parentAcl;

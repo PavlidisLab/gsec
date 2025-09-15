@@ -29,6 +29,7 @@ import gemma.gsec.model.UserGroup;
 import gemma.gsec.util.SecurityUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.vote.AuthenticatedVoter;
 import org.springframework.security.acls.domain.BasePermission;
@@ -44,6 +45,8 @@ import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Methods for changing security on objects, creating and modifying groups, checking security on objects.
@@ -319,7 +322,7 @@ public class SecurityServiceImpl implements SecurityService {
 
         Collection<String> result = new HashSet<>();
         for ( String gname : groupNames ) {
-            UserGroup g = userService.findGroupByName( gname );
+            UserGroup g = requireNonNull( userService.findGroupByName( gname ) );
             if ( this.isEditableByUser( g, userName ) ) {
                 result.add( gname );
             }
@@ -428,7 +431,7 @@ public class SecurityServiceImpl implements SecurityService {
         if ( !SecurityUtil.isUserLoggedIn() ) {
             return false;
         }
-        return isReadableByUser( s, userDetailsManager.getCurrentUsername() );
+        return isReadableByUser( s, requireNonNull( userDetailsManager.getCurrentUsername() ) );
     }
 
     @Override
@@ -449,7 +452,7 @@ public class SecurityServiceImpl implements SecurityService {
         if ( !SecurityUtil.isUserLoggedIn() ) {
             return false;
         }
-        return isEditableByUser( s, userDetailsManager.getCurrentUsername() );
+        return isEditableByUser( s, requireNonNull( userDetailsManager.getCurrentUsername() ) );
     }
 
     @Override
@@ -470,7 +473,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
-    public boolean isPrivate( Securable s ) {
+    public boolean isPrivate( @Nullable Securable s ) {
         if ( s == null ) {
             log.warn( "Null object: considered public!" );
             return false;
@@ -489,7 +492,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
-    public boolean isShared( Securable s ) {
+    public boolean isShared( @Nullable Securable s ) {
         if ( s == null ) {
             return false;
         }
@@ -545,7 +548,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
-    public void makePrivate( Securable object ) {
+    public void makePrivate( @Nullable Securable object ) {
         if ( object == null ) {
             return;
         }
@@ -575,7 +578,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
-    public void makePublic( Securable object ) {
+    public void makePublic( @Nullable Securable object ) {
 
         if ( object == null ) {
             return;
@@ -691,6 +694,7 @@ public class SecurityServiceImpl implements SecurityService {
 
     @Override
     public void createGroup( String groupName ) {
+        String userName = requireNonNull( userDetailsManager.getCurrentUsername() );
 
         /*
          * Nice if we can get around this uniqueness constraint...but I guess it's not easy.
@@ -705,7 +709,7 @@ public class SecurityServiceImpl implements SecurityService {
         String groupAuthority = groupName.toUpperCase() + "_" + randomGroupNameSuffix();
 
         this.groupManager.createGroup( groupName, Collections.singletonList( new SimpleGrantedAuthority( groupAuthority ) ) );
-        addUserToGroup( userDetailsManager.getCurrentUsername(), groupName );
+        addUserToGroup( userName, groupName );
 
         // make sure all current and future members of the group will be able to see the group
         // UserGroup group = userService.findGroupByName( groupName );
@@ -773,7 +777,7 @@ public class SecurityServiceImpl implements SecurityService {
         if ( groupName.equals( AuthorityConstants.ADMIN_GROUP_NAME ) ) {
             throw new AccessDeniedException( "Attempt to mess with ADMIN privileges denied" );
         }
-        return groupManager.findGroupsForUser( userDetailsManager.getCurrentUsername() );
+        return groupManager.findGroupsForUser( requireNonNull( userDetailsManager.getCurrentUsername() ) );
     }
 
     /**
@@ -787,7 +791,7 @@ public class SecurityServiceImpl implements SecurityService {
         } catch ( AccessDeniedException e ) {
             // I'm not sure this actually happens. Usermanager.findAllGroups should just show all of the user's viewable
             // groups.
-            groupNames = groupManager.findGroupsForUser( userDetailsManager.getCurrentUsername() );
+            groupNames = groupManager.findGroupsForUser( requireNonNull( userDetailsManager.getCurrentUsername() ) );
         }
         return groupNames;
     }

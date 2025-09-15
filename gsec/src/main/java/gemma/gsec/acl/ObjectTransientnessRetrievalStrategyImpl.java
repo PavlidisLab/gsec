@@ -1,6 +1,5 @@
 package gemma.gsec.acl;
 
-import gemma.gsec.acl.ObjectTransientnessRetrievalStrategy;
 import gemma.gsec.model.Securable;
 import org.springframework.util.Assert;
 

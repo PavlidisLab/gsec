@@ -22,6 +22,7 @@ import gemma.gsec.acl.ObjectTransientnessRetrievalStrategy;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.access.vote.AbstractAclVoter;
@@ -30,7 +31,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.util.Assert;
 import org.springframework.util.TypeUtils;
 
-import javax.annotation.Nullable;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -206,9 +206,10 @@ public class AclEntryCollectionVoter extends AbstractAclVoter {
     /**
      * Get the collection from the invocation.
      */
+    @Nullable
     protected Collection<?> getCollectionInstance( MethodInvocation secureObject ) {
 
-        Object[] args;
+        @Nullable Object[] args;
         Class<?>[] params;
         Type[] types;
 

@@ -15,12 +15,12 @@
 package gemma.gsec.acl.domain;
 
 import org.hibernate.Session;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.acls.model.Acl;
 import org.springframework.security.acls.model.MutableAcl;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Sid;
 
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
