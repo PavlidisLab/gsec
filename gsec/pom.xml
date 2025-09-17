@@ -335,7 +335,7 @@
     <distributionManagement>
         <site>
             <id>pavlab</id>
-            <url>scpexe://${pavlab.server}${pavlab.siteDir}/${project.groupId}/gemma-${project.version}</url>
+            <url>scpexe://${pavlab.server}${pavlab.siteDir}/${project.groupId}/gemma-gsec-${project.version}</url>
         </site>
     </distributionManagement>
     <profiles>
@@ -345,7 +345,7 @@
             <distributionManagement>
                 <site>
                     <id>pavlab</id>
-                    <url>file://${pavlab.repoDir}/${project.groupId}/gemma-${project.version}</url>
+                    <url>file://${pavlab.siteDir}/${project.groupId}/gemma-gsec-${project.version}</url>
                 </site>
             </distributionManagement>
         </profile>
