@@ -40,6 +40,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
@@ -80,6 +81,7 @@ public class SecurityServiceImpl implements SecurityService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Map<T, Boolean> arePublic( Collection<T> securables ) {
         return arePrivate( securables )
             .entrySet().stream()
@@ -87,6 +89,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Map<T, Boolean> arePrivate( Collection<T> securables ) {
         Map<T, Boolean> result = new HashMap<>( securables.size() );
         Map<ObjectIdentity, T> objectIdentities = getObjectIdentities( securables );
@@ -112,6 +115,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Map<T, Boolean> areShared( Collection<T> securables ) {
         Map<T, Boolean> result = new HashMap<>( securables.size() );
         Map<ObjectIdentity, T> objectIdentities = getObjectIdentities( securables );
@@ -133,6 +137,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Collection<T> choosePrivate( Collection<T> securables ) {
         Collection<T> result = new HashSet<>();
 
@@ -147,6 +152,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Collection<T> choosePublic( Collection<T> securables ) {
         Collection<T> result = new HashSet<>();
 
@@ -162,6 +168,7 @@ public class SecurityServiceImpl implements SecurityService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public Collection<String> readableBy( Securable s ) {
         Collection<String> allUsers = userDetailsManager.findAllUsers();
 
@@ -177,6 +184,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Collection<String> editableBy( Securable s ) {
 
         Collection<String> allUsers = userDetailsManager.findAllUsers();
@@ -209,6 +217,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Collection<Sid> getAvailableSids() {
 
         Collection<Sid> results = new HashSet<>();
@@ -238,6 +247,7 @@ public class SecurityServiceImpl implements SecurityService {
      * @return The authority e.g. GROUP_FISH_...
      */
     @Override
+    @Transactional(readOnly = true)
     public List<String> getGroupAuthoritiesNameFromGroupName( String groupName ) {
         Collection<String> groups = checkForGroupAccessByCurrentUser( groupName );
         if ( !groups.contains( groupName ) && !SecurityUtil.isUserAdmin() ) {
@@ -249,6 +259,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Map<T, Collection<String>> getGroupsEditableBy( Collection<T> securables ) {
         Collection<String> groupNames = getGroupsUserCanView();
 
@@ -265,6 +276,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Collection<String> getGroupsEditableBy( Securable s ) {
         Collection<String> groupNames = getGroupsUserCanView();
 
@@ -280,6 +292,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Map<T, Collection<String>> getGroupsReadableBy( Collection<T> securables ) {
 
         Map<T, Collection<String>> result = new HashMap<>();
@@ -299,6 +312,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Collection<String> getGroupsReadableBy( Securable s ) {
         Collection<String> groupNames = getGroupsUserCanView();
 
@@ -314,6 +328,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Collection<String> getGroupsUserCanEdit( String userName ) {
         Collection<String> groupNames = getGroupsUserCanView();
 
@@ -330,11 +345,13 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Sid getOwner( Securable s ) {
         return getAcl( s ).getOwner();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public <T extends Securable> Map<T, Sid> getOwners( Collection<T> securables ) {
         Map<T, Sid> result = new HashMap<>();
         Map<ObjectIdentity, T> objectIdentities = getObjectIdentities( securables );
@@ -363,6 +380,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isOwnedByCurrentUser( Securable s ) {
         if ( !SecurityUtil.isUserLoggedIn() ) {
             return false;
@@ -424,6 +442,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isReadableByCurrentUser( Securable s ) {
         if ( !SecurityUtil.isUserLoggedIn() ) {
             return false;
@@ -432,12 +451,14 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isReadableByUser( Securable s, String userName ) {
         return hasPermission( s, Collections.singletonList( BasePermission.READ ), userName )
             || hasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), userName );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isReadableByGroup( Securable s, String groupName ) {
         return groupHasPermission( s, Collections.singletonList( BasePermission.READ ), groupName )
             || groupHasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), groupName );
@@ -445,6 +466,7 @@ public class SecurityServiceImpl implements SecurityService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isEditableByCurrentUser( Securable s ) {
         if ( !SecurityUtil.isUserLoggedIn() ) {
             return false;
@@ -453,23 +475,27 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isEditableByUser( Securable s, String userName ) {
         return hasPermission( s, Collections.singletonList( BasePermission.WRITE ), userName )
             || hasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), userName );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isEditableByGroup( Securable s, String groupName ) {
         return groupHasPermission( s, Collections.singletonList( BasePermission.WRITE ), groupName )
             || groupHasPermission( s, Collections.singletonList( BasePermission.ADMINISTRATION ), groupName );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isPublic( Securable s ) {
         return !isPrivate( s );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isPrivate( Securable s ) {
         if ( s == null ) {
             log.warn( "Null object: considered public!" );
@@ -489,6 +515,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isShared( Securable s ) {
         if ( s == null ) {
             return false;
@@ -512,6 +539,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void makeOwnedByUser( Securable s, String userName ) {
         MutableAcl acl = getAcl( s );
 
@@ -540,11 +568,13 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void makePrivate( Collection<? extends Securable> objs ) {
         objs.forEach( this::makePrivate );
     }
 
     @Override
+    @Transactional
     public void makePrivate( Securable object ) {
         if ( object == null ) {
             return;
@@ -570,11 +600,13 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void makePublic( Collection<? extends Securable> objs ) {
         objs.forEach( this::makePublic );
     }
 
     @Override
+    @Transactional
     public void makePublic( Securable object ) {
 
         if ( object == null ) {
@@ -605,6 +637,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void makeReadableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
@@ -626,6 +659,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void makeUnreadableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
@@ -639,6 +673,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void makeUneditableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
@@ -651,6 +686,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void makeEditableByGroup( Securable s, String groupName ) throws AccessDeniedException {
 
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
@@ -677,6 +713,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void setOwner( Securable s, String userName ) {
         // make sure user exists and is enabled.
         UserDetails user = this.userDetailsManager.loadUserByUsername( userName );
@@ -690,6 +727,7 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void createGroup( String groupName ) {
 
         /*
@@ -720,11 +758,13 @@ public class SecurityServiceImpl implements SecurityService {
     }
 
     @Override
+    @Transactional
     public void addUserToGroup( String userName, String groupName ) {
         this.groupManager.addUserToGroup( userName, groupName );
     }
 
     @Override
+    @Transactional
     public void removeUserFromGroup( String userName, String groupName ) {
         this.groupManager.removeUserFromGroup( userName, groupName );
     }
