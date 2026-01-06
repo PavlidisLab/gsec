@@ -261,7 +261,7 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional(readOnly = true)
     public <T extends Securable> Map<T, Collection<String>> getGroupsEditableBy( Collection<T> securables ) {
-        Collection<String> groupNames = getGroupsUserCanView();
+        Collection<String> groupNames = getGroupsUserCanView( userDetailsManager.getCurrentUsername() );
 
         Map<T, Collection<String>> result = new HashMap<>( securables.size() );
 
@@ -278,7 +278,7 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional(readOnly = true)
     public Collection<String> getGroupsEditableBy( Securable s ) {
-        Collection<String> groupNames = getGroupsUserCanView();
+        Collection<String> groupNames = getGroupsUserCanView( userDetailsManager.getCurrentUsername() );
 
         Collection<String> result = new HashSet<>();
 
@@ -299,7 +299,7 @@ public class SecurityServiceImpl implements SecurityService {
 
         if ( securables.isEmpty() ) return result;
 
-        Collection<String> groupNames = getGroupsUserCanView();
+        Collection<String> groupNames = getGroupsUserCanView( userDetailsManager.getCurrentUsername() );
 
         for ( String groupName : groupNames ) {
             populateGroupPermissions( result, groupName,
@@ -314,7 +314,7 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional(readOnly = true)
     public Collection<String> getGroupsReadableBy( Securable s ) {
-        Collection<String> groupNames = getGroupsUserCanView();
+        Collection<String> groupNames = getGroupsUserCanView( userDetailsManager.getCurrentUsername() );
 
         Collection<String> result = new HashSet<>();
 
@@ -330,7 +330,7 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional(readOnly = true)
     public Collection<String> getGroupsUserCanEdit( String userName ) {
-        Collection<String> groupNames = getGroupsUserCanView();
+        Collection<String> groupNames = getGroupsUserCanView( userName );
 
         Collection<String> result = new HashSet<>();
         for ( String gname : groupNames ) {
@@ -497,11 +497,6 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional(readOnly = true)
     public boolean isPrivate( Securable s ) {
-        if ( s == null ) {
-            log.warn( "Null object: considered public!" );
-            return false;
-        }
-
         /*
          * Note: in theory, it should pay attention to the sid we ask for and return nothing if there is no acl.
          * However, the implementation actually ignores the sid argument.
@@ -517,10 +512,6 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional(readOnly = true)
     public boolean isShared( Securable s ) {
-        if ( s == null ) {
-            return false;
-        }
-
         /*
          * Implementation note: this code mimics AclEntryVoter.vote, but in adminsitrative mode so no auditing etc
          * happens.
@@ -576,10 +567,6 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional
     public void makePrivate( Securable object ) {
-        if ( object == null ) {
-            return;
-        }
-
         if ( isPrivate( object ) ) {
             log.warn( "Object is already private: " + object );
             return;
@@ -608,13 +595,8 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional
     public void makePublic( Securable object ) {
-
-        if ( object == null ) {
-            return;
-        }
-
         if ( isPublic( object ) ) {
-            log.warn( "Object is already public" );
+            log.warn( "Object is already public: " + object );
             return;
         }
 
@@ -639,9 +621,8 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional
     public void makeReadableByGroup( Securable s, String groupName ) throws AccessDeniedException {
-
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
-            throw new IllegalArgumentException( "'group' cannot be null" );
+            throw new IllegalArgumentException( "The group name cannot be empty." );
         }
 
         Collection<String> groups = checkForGroupAccessByCurrentUser( groupName );
@@ -661,7 +642,6 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional
     public void makeUnreadableByGroup( Securable s, String groupName ) throws AccessDeniedException {
-
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
             throw new IllegalArgumentException( "'group' cannot be null" );
         }
@@ -675,7 +655,6 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional
     public void makeUneditableByGroup( Securable s, String groupName ) throws AccessDeniedException {
-
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
             throw new IllegalArgumentException( "'group' cannot be null" );
         }
@@ -688,7 +667,6 @@ public class SecurityServiceImpl implements SecurityService {
     @Override
     @Transactional
     public void makeEditableByGroup( Securable s, String groupName ) throws AccessDeniedException {
-
         if ( StringUtils.isEmpty( groupName.trim() ) ) {
             throw new IllegalArgumentException( "'group' cannot be null" );
         }
@@ -819,7 +797,7 @@ public class SecurityServiceImpl implements SecurityService {
     /**
      * @return groups that the current user can view. For administrators, this is all groups.
      */
-    private Collection<String> getGroupsUserCanView() {
+    private Collection<String> getGroupsUserCanView( String userName ) {
         Collection<String> groupNames;
         try {
             // administrator...
@@ -827,7 +805,7 @@ public class SecurityServiceImpl implements SecurityService {
         } catch ( AccessDeniedException e ) {
             // I'm not sure this actually happens. Usermanager.findAllGroups should just show all of the user's viewable
             // groups.
-            groupNames = groupManager.findGroupsForUser( userDetailsManager.getCurrentUsername() );
+            groupNames = groupManager.findGroupsForUser( userName );
         }
         return groupNames;
     }

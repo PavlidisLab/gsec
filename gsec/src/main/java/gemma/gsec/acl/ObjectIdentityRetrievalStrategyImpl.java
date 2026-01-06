@@ -37,7 +37,8 @@ public class ObjectIdentityRetrievalStrategyImpl implements ObjectIdentityRetrie
 
     @Override
     public ObjectIdentity getObjectIdentity( Object domainObject ) {
-        Assert.isInstanceOf( Securable.class, domainObject, "The domain object must implement the Securable interface" );
+        Assert.notNull( domainObject, "The domain object must be non-null." );
+        Assert.isInstanceOf( Securable.class, domainObject, "The domain object must implement the " + Securable.class.getName() + " interface." );
         if ( domainObject instanceof SecureValueObject ) {
             SecureValueObject svo = ( SecureValueObject ) domainObject;
             return new AclObjectIdentity( svo.getSecurableClass(), svo.getId() );

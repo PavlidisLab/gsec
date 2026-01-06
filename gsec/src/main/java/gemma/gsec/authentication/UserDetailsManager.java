@@ -2,7 +2,6 @@ package gemma.gsec.authentication;
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import javax.annotation.Nullable;
 import java.util.Collection;
 
 /**
@@ -44,8 +43,9 @@ public interface UserDetailsManager extends org.springframework.security.provisi
 
     /**
      * Returns a String username (the principal).
+     *
+     * @throws IllegalStateException if no user is currently authenticated.
      */
-    @Nullable
     String getCurrentUsername();
 
     boolean loggedIn();
