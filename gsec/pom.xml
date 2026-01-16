@@ -10,10 +10,6 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>gsec</name>
-    <organization>
-        <name>UBC Michael Smith Laboratories</name>
-        <url>https://www.msl.ubc.ca/</url>
-    </organization>
     <scm>
         <url>https://github.com/ppavlidis/gsec</url>
         <connection>scm:git:git://github.com/ppavlidis/gsec.git</connection>
