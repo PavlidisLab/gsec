@@ -19,8 +19,7 @@
 package gemma.gsec.model;
 
 /**
- * Interface to mark entities which are secured, and which should not have 'parent's, and therefore do not inherit
- * permissions from other objects.
+ * Indicates that a {@link Securable} cannot have a parent.
  *
  * @author paul
  * @version $Id: SecuredNotChild.java,v 1.2 2009/11/23 20:26:42 paul Exp $
