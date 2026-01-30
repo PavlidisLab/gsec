@@ -19,7 +19,10 @@
 package gemma.gsec.model;
 
 /**
- * Interface that indicates an entity can be secured. By default, permissions are inherited by associated objects.
+ * Interface that indicates an entity can be secured.
+ * <p>
+ * Securables have ACLs associated with them and may inherit permissions from parent securables (see {@link SecuredChild}), or
+ * not (see {@link SecuredNotChild}).
  *
  * @author paul
  * @version $Id: Securable.java,v 1.4 2013/03/16 00:39:24 paul Exp $

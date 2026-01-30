@@ -18,14 +18,14 @@ import gemma.gsec.AuthorityConstants;
 import gemma.gsec.acl.domain.AclGrantedAuthoritySid;
 import gemma.gsec.acl.domain.AclPrincipalSid;
 import gemma.gsec.acl.domain.AclService;
-import gemma.gsec.model.Securable;
-import gemma.gsec.model.SecuredChild;
-import gemma.gsec.model.SecuredNotChild;
+import gemma.gsec.model.*;
 import gemma.gsec.util.SecurityUtil;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.Signature;
+import org.aspectj.lang.annotation.AfterReturning;
 import org.hibernate.Hibernate;
 import org.hibernate.LazyInitializationException;
 import org.hibernate.SessionFactory;
@@ -44,9 +44,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import javax.annotation.Nullable;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collection;
+import java.util.*;
 
 /**
  * Adds security controls to newly created objects (including those created by updates to other objects via cascades),
@@ -61,72 +60,49 @@ import java.util.Collection;
  * @author pavlidis
  * @version $Id: BaseAclAdvice.java,v 1.1 2013/09/14 16:56:03 paul Exp $
  */
-@SuppressWarnings("unused")
 public abstract class BaseAclAdvice {
 
     private static final Log log = LogFactory.getLog( BaseAclAdvice.class );
 
+    private enum AclMode {
+        CREATE,
+        UPDATE,
+        SAVE,
+        DELETE
+    }
+
     private final AclService aclService;
     private final SessionFactory sessionFactory;
     private final ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy;
+    private final ParentIdentityRetrievalStrategy parentIdentityRetrievalStrategy;
+    private final ObjectTransientnessRetrievalStrategy objectTransientnessRetrievalStrategy;
 
-    protected BaseAclAdvice( AclService aclService, SessionFactory sessionFactory, ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy ) {
+    protected BaseAclAdvice( AclService aclService, SessionFactory sessionFactory, ObjectIdentityRetrievalStrategy objectIdentityRetrievalStrategy, ParentIdentityRetrievalStrategy parentIdentityRetrievalStrategy, ObjectTransientnessRetrievalStrategy objectTransientnessRetrievalStrategy ) {
         this.aclService = aclService;
         this.sessionFactory = sessionFactory;
         this.objectIdentityRetrievalStrategy = objectIdentityRetrievalStrategy;
+        this.parentIdentityRetrievalStrategy = parentIdentityRetrievalStrategy;
+        this.objectTransientnessRetrievalStrategy = objectTransientnessRetrievalStrategy;
     }
 
-    public final void doAclAdvice( JoinPoint jp, Object retValue ) {
-        //
-
-        final Object[] args = jp.getArgs();
-        Signature signature = jp.getSignature();
-        final String methodName = signature.getName();
-
-        // Class<?>[] clazzes = new Class[jp.getArgs().length];
-        // for ( int i = 0; i < jp.getArgs().length; i++ ) {
-        // clazzes[i] = jp.getArgs().getClass();
-        // }
-        // Method m = signature.getDeclaringType().getDeclaredMethod( signature.getName(), clazzes );
-        // Transactional annotation = m.getAnnotation( Transactional.class );
-        // if ( annotation != null && !annotation.readOnly() ) {
-        // return;
-        // }
-
-        assert args != null;
-        final Object persistentObject = getPersistentObject( retValue, methodName, args );
-
-        if ( persistentObject == null ) return;
-
-        final boolean isUpdate = methodIsUpdate( methodName );
-        final boolean isDelete = methodIsDelete( methodName );
-
-        // Case 1: collection of securables.
-        if ( Collection.class.isAssignableFrom( persistentObject.getClass() ) ) {
-            for ( final Object o : ( Collection<?> ) persistentObject ) {
-                if ( isIneligibleForAcl( o ) ) {
-                    continue; // possibly could return, if we assume collection is homogeneous in type.
-                }
-                process( o, methodName, isUpdate, isDelete );
-            }
-        } else {
-            // Case 2: single securable
-            if ( isIneligibleForAcl( persistentObject ) ) {
-                /*
-                 * This fails for methods that delete entities given an id.
-                 */
-                return;
-            }
-            process( persistentObject, methodName, isUpdate, isDelete );
-        }
-
+    @AfterReturning
+    public void doAclCreateAdvice( JoinPoint jp, @Nullable Object retValue ) {
+        doAclAdvice( jp, retValue, AclMode.CREATE );
     }
 
-    // from gemma reflectionutil
-    private Object getProperty( Object object, PropertyDescriptor descriptor ) throws IllegalAccessException,
-        InvocationTargetException {
-        Method getter = descriptor.getReadMethod();
-        return getter.invoke( object );
+    @AfterReturning
+    public void doAclUpdateAdvice( JoinPoint jp, @Nullable Object retValue ) {
+        doAclAdvice( jp, retValue, AclMode.UPDATE );
+    }
+
+    @AfterReturning
+    public void doAclSaveAdvice( JoinPoint jp, @Nullable Object retValue ) {
+        doAclAdvice( jp, retValue, AclMode.SAVE );
+    }
+
+    @AfterReturning
+    public void doAclDeleteAdvice( JoinPoint jp, @Nullable Object retValue ) {
+        doAclAdvice( jp, retValue, AclMode.DELETE );
     }
 
     /**
@@ -148,132 +124,6 @@ public abstract class BaseAclAdvice {
     }
 
     /**
-     * Subclasses can modify this to address special cases. Default implementation is a no-op.
-     * <p>
-     * FIXME this might not be necessary.
-     *
-     * @param acl       may be modified by this call
-     * @param parentAcl value may be changed by this call
-     * @param sid       value may be changed by this call
-     */
-    protected void createOrUpdateAclSpecialCases( MutableAcl acl, @Nullable Acl parentAcl, Sid sid, Securable object ) {
-    }
-
-    protected boolean currentUserIsAdmin() {
-        return SecurityUtil.isUserAdmin();
-    }
-
-    protected boolean currentUserIsAnonymous() {
-        return SecurityUtil.isUserAnonymous();
-    }
-
-    protected boolean currentUserIsRunningAsAdmin() {
-        return SecurityUtil.isRunningAsAdmin();
-    }
-
-    /**
-     * For use by other overridden methods.
-     */
-    protected final AclService getAclService() {
-        return aclService;
-    }
-
-    protected abstract GrantedAuthority getUserGroupGrantedAuthority( Securable object );
-
-    protected abstract String getUserName( Securable object );
-
-    /**
-     * Called during create. Default implementation returns null unless the object is a SecuredChild, in which case it
-     * returns the value of s.getSecurityOwner() (which will be null unless it is filled in)
-     * <p>
-     * For some cases, we want to find the parent so we don't have to rely on updates later to catch it and fill it in.
-     * Implementers must decide which cases can be handled this way. Care is required: the parent might not be created
-     * yet, in which case the cascade to s is surely going to fix it later. The best situation is when s has an accessor
-     * to reach the parent.
-     *
-     * @param s which might have a parent already in the system
-     */
-    protected Acl locateParentAcl( SecuredChild s ) {
-        Securable parent = locateSecuredParent( s );
-
-        if ( parent != null ) return this.getAclService().readAclById( makeObjectIdentity( parent ) );
-
-        return null;
-    }
-
-    /**
-     * Forms the object identity to be inserted in acl_object_identity table. Note that this does not add an
-     * ObjectIdentity to the database; it just calls 'new'.
-     *
-     * @param object A persistent object
-     * @return object identity.
-     */
-    protected final ObjectIdentity makeObjectIdentity( Securable object ) {
-        return objectIdentityRetrievalStrategy.getObjectIdentity( object );
-    }
-
-    protected abstract boolean objectIsUser( Securable object );
-
-    protected abstract boolean objectIsUserGroup( Securable object );
-
-    /**
-     * Called when objects are first created in the system and need their permissions initialized. Insert the access
-     * control entries that all objects should have (unless they inherit from another object).
-     * <p>
-     * Default implementation does the following:
-     * <ul>
-     * <li>All objects are administratable by GROUP_ADMIN
-     * <li>GROUP_AGENT has READ permissions on all objects
-     * <li>If the current user is an adminisrator, and keepPrivateEvenWhenAdmin is false, the object gets READ
-     * permissions for ANONYMOUS.
-     * <li>If the current user is a "regular user" (non-admin) give them read/write permissions.
-     */
-    protected void setupBaseAces( MutableAcl acl, ObjectIdentity oi, Sid sid, boolean keepPrivateEvenWhenAdmin ) {
-
-        /*
-         * All objects must have administration permissions on them.
-         */
-        if ( log.isDebugEnabled() ) log.debug( "Making administratable by GROUP_ADMIN: " + oi );
-        grant( acl, BasePermission.ADMINISTRATION, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-            AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) );
-
-        /*
-         * Let agent read anything
-         */
-        if ( log.isDebugEnabled() ) log.debug( "Making readable by GROUP_AGENT: " + oi );
-        grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-            AuthorityConstants.AGENT_GROUP_AUTHORITY ) ) );
-
-        /*
-         * If admin, and the object is not a user or group, make it readable by anonymous.
-         */
-        boolean makeAnonymousReadable = this.currentUserIsAdmin() && !keepPrivateEvenWhenAdmin;
-
-        if ( makeAnonymousReadable ) {
-            if ( log.isDebugEnabled() ) log.debug( "Making readable by IS_AUTHENTICATED_ANONYMOUSLY: " + oi );
-            grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
-                AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) ) );
-        }
-
-        /*
-         * Don't add more permissions for the administrator. But whatever it is, the person who created it can
-         * read/write it. User will only be anonymous if they are registering (AFAIK)
-         */
-        if ( !this.currentUserIsAdmin() && !this.currentUserIsAnonymous() ) {
-
-            if ( log.isDebugEnabled() ) log.debug( "Giving read/write permissions on " + oi + " to " + sid );
-            grant( acl, BasePermission.READ, sid );
-
-            /*
-             * User who created something can edit it.
-             */
-            grant( acl, BasePermission.WRITE, sid );
-
-        }
-
-    }
-
-    /**
      * For cases where don't have a cascade but the other end is securable, so we <em>must</em> check the association.
      * For example, when we persist an EE we also persist any new ADs in the same transaction. Thus the ADs need ACL
      * attention at the same time (via the BioAssays).
@@ -282,9 +132,8 @@ public abstract class BaseAclAdvice {
      * @param property of the object
      * @return true if the association should be followed (even though it might not be based on cascade status)
      */
-    protected boolean specialCaseForAssociationFollow( Object object, String property ) {
+    protected boolean canFollowAssociation( Object object, String property ) {
         return false;
-
     }
 
     /**
@@ -294,7 +143,7 @@ public abstract class BaseAclAdvice {
      *
      * @return false if ACEs should be retained. True if ACEs should be removed (if possible).
      */
-    protected boolean specialCaseToAllowRemovingAcesFromChild( Securable object, Acl parentAcl ) {
+    protected boolean canRemoveAcesFromChild( Securable object, Acl parentAcl ) {
         return false;
     }
 
@@ -305,8 +154,146 @@ public abstract class BaseAclAdvice {
      *
      * @return true if it's a special case to be kept private on creation.
      */
-    protected boolean specialCaseToKeepPrivateOnCreation( Securable object ) {
+    protected boolean isKeepPrivateOnCreation( Securable object ) {
         return object instanceof SecuredChild;
+    }
+
+    private void doAclAdvice( JoinPoint jp, @Nullable Object retValue, AclMode aclMode ) {
+        final Object[] args = jp.getArgs();
+        Signature signature = jp.getSignature();
+        final String methodName = signature.getName();
+
+        assert args != null;
+        Object persistentObject;
+        if ( aclMode == AclMode.UPDATE || aclMode == AclMode.DELETE ) {
+            if ( args.length >= 1 ) {
+                persistentObject = args[0];
+                if ( persistentObject == null ) {
+                    log.warn( "First argument of " + jp + " is null, cannot update/delete ACLs." );
+                    return;
+                }
+            } else {
+                log.warn( jp + " has no argument; cannot update/delete ACLs." );
+                return;
+            }
+        } else {
+            // SAVE and CREATE return a value
+            if ( retValue != null ) {
+                persistentObject = retValue;
+            } else {
+                log.warn( jp + " returned null, cannot create/update ACLs." );
+                return;
+            }
+        }
+
+        for ( Securable securable : extractSecurables( persistentObject ) ) {
+            process( securable, methodName, aclMode );
+        }
+    }
+
+    /**
+     * Do necessary ACL operations on the object.
+     */
+    private void process( final Securable s, final String methodName, final AclMode aclMode ) {
+        if ( log.isTraceEnabled() )
+            log.trace( "***********  Start " + aclMode.name().toLowerCase() + " ACL on " + s + " *************" );
+        switch ( aclMode ) {
+            case CREATE:
+                startCreate( methodName, s );
+                break;
+            case UPDATE:
+                startUpdate( methodName, s );
+                break;
+            case SAVE:
+                if ( objectTransientnessRetrievalStrategy.isObjectTransient( s ) ) {
+                    startCreate( methodName, s );
+                } else {
+                    startUpdate( methodName, s );
+                }
+                break;
+            case DELETE:
+                deleteAcl( s );
+                break;
+            default:
+                throw new IllegalArgumentException( "Unknown ACL mode: " + aclMode + "." );
+        }
+        if ( log.isTraceEnabled() ) log.trace( "*========* End ACL on " + s + " *=========*" );
+    }
+
+    private void startCreate( String methodName, Securable s ) {
+        // Note that if the method is findOrCreate, we'll return quickly.
+        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
+
+        if ( oi == null ) {
+            throw new IllegalStateException(
+                "On 'create' methods, object should have a valid objectIdentity available. Method=" + methodName
+                    + " on " + s );
+        }
+
+        Acl parentAcl;
+        if ( s instanceof SecuredChild ) {
+            ObjectIdentity parentAoi = parentIdentityRetrievalStrategy.getParentIdentity( s );
+            parentAcl = parentAoi != null ? aclService.readAclById( parentAoi ) : null;
+        } else {
+            parentAcl = null;
+        }
+
+        addOrUpdateAcl( null, s, parentAcl );
+        processAssociations( s, null );
+    }
+
+    /**
+     * Kick off an update. This is executed when we call fooService.update(s). The basic issue is to add permissions for
+     * any <em>new</em> associated objects.
+     *
+     * @param m the update method
+     * @param s the securable being updated.
+     */
+    private void startUpdate( String m, Securable s ) {
+        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
+
+        // this is not persistent.
+        assert oi != null;
+        MutableAcl acl = null;
+        Acl parentAcl = null;
+        try {
+            acl = ( MutableAcl ) aclService.readAclById( oi );
+            assert acl != null;
+            parentAcl = acl.getParentAcl(); // can be null.
+        } catch ( NotFoundException nfe ) {
+            /*
+             * This really should be an error.
+             */
+
+            /*
+             * Then, this shouldn't be an update.
+             */
+            log.warn( "On 'update' methods, there should be a ACL on the passed object already. Method=" + m + " on "
+                + s );
+        }
+
+        addOrUpdateAcl( acl, s, parentAcl );
+        processAssociations( s, parentAcl );
+    }
+
+    /**
+     * Delete acl permissions for an object.
+     */
+    private void deleteAcl( Securable object ) throws DataAccessException, IllegalArgumentException {
+        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( object );
+
+        if ( oi == null ) {
+            log.warn( "Null object identity for : " + object );
+        }
+
+        if ( log.isDebugEnabled() ) {
+            log.debug( "Deleting ACL for " + object );
+        }
+
+        /*
+         * This deletes children with the second parameter = true.
+         */
+        aclService.deleteAcl( oi, true );
     }
 
     /**
@@ -324,14 +311,14 @@ public abstract class BaseAclAdvice {
         }
 
         if ( log.isTraceEnabled() ) log.trace( "Checking for ACLS on " + object );
-        ObjectIdentity oi = makeObjectIdentity( object );
+        ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( object );
 
         boolean create = false;
         if ( acl == null ) {
             // usually create, but could be update.
             try {
                 // this is probably redundant. We shouldn't have ACLs already.
-                acl = ( MutableAcl ) getAclService().readAclById( oi ); // throws exception if not found
+                acl = ( MutableAcl ) aclService.readAclById( oi ); // throws exception if not found
                 /*
                  * If we get here, we're in update mode after all. Could be findOrCreate, or could be a second pass that
                  * will let us fill in parent ACLs for associated objects missed earlier in a persist cycle. E.g.
@@ -345,7 +332,7 @@ public abstract class BaseAclAdvice {
                 }
             } catch ( NotFoundException nfe ) {
                 // the current user will be the owner.
-                acl = getAclService().createAcl( oi );
+                acl = aclService.createAcl( oi );
                 create = true;
                 assert acl != null;
                 assert acl.getOwner() != null;
@@ -366,15 +353,11 @@ public abstract class BaseAclAdvice {
 
         AclPrincipalSid sid = new AclPrincipalSid( p.toString() );
 
-        boolean isAdmin = currentUserIsAdmin();
+        boolean isAdmin = SecurityUtil.isUserAdmin();
 
-        boolean isRunningAsAdmin = currentUserIsRunningAsAdmin();
+        boolean isRunningAsAdmin = SecurityUtil.isRunningAsAdmin();
 
-        boolean objectIsAUser = objectIsUser( object );
-
-        boolean objectIsAGroup = objectIsUserGroup( object );
-
-        boolean keepPrivateEvenWhenAdmin = this.specialCaseToKeepPrivateOnCreation( object );
+        boolean keepPrivateEvenWhenAdmin = this.isKeepPrivateOnCreation( object );
 
         /*
          * The only case where we absolutely disallow inheritance is for SecuredNotChild.
@@ -400,8 +383,8 @@ public abstract class BaseAclAdvice {
             /*
              * Make sure user groups can be read by future members of the group
              */
-            if ( objectIsAGroup ) {
-                GrantedAuthority ga = getUserGroupGrantedAuthority( object );
+            if ( object instanceof UserGroup ) {
+                GrantedAuthority ga = getUserGroupGrantedAuthority( ( UserGroup ) object );
                 if ( log.isDebugEnabled() ) log.debug( "Making group readable by " + ga + ": " + oi );
                 grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( ga ) );
             }
@@ -417,8 +400,8 @@ public abstract class BaseAclAdvice {
          * fact, user creation runs with RUN_AS_ADMIN privileges.
          */
 
-        if ( create && objectIsAUser ) {
-            String userName = getUserName( object );
+        if ( create && object instanceof User ) {
+            String userName = ( ( User ) object ).getUserName();
             if ( sid.getPrincipal().equals( userName ) ) {
                 /*
                  * This case should actually never happen. "we" are the user who is creating this user. We've already
@@ -449,8 +432,6 @@ public abstract class BaseAclAdvice {
             }
         }
 
-        createOrUpdateAclSpecialCases( acl, parentAcl, sid, object );
-
         /*
          * Only the owner or an administrator can do these operations, and only in those cases would they be necessary
          * anyway (primarily in creating the objects in the first place, there's nearly no conceivable reason to change
@@ -474,8 +455,60 @@ public abstract class BaseAclAdvice {
         }
 
         // finalize.
-        getAclService().updateAcl( acl );
+        aclService.updateAcl( acl );
+    }
 
+    private GrantedAuthority getUserGroupGrantedAuthority( UserGroup object ) {
+        Collection<? extends GroupAuthority> authorities = object.getAuthorities();
+        assert authorities.size() == 1;
+        return new SimpleGrantedAuthority( authorities.iterator().next().getAuthority() );
+    }
+
+    /**
+     * Called when objects are first created in the system and need their permissions initialized. Insert the access
+     * control entries that all objects should have (unless they inherit from another object).
+     * <p>
+     * Default implementation does the following:
+     * <ul>
+     * <li>All objects are administratable by GROUP_ADMIN
+     * <li>GROUP_AGENT has READ permissions on all objects
+     * <li>If the current user is an adminisrator, and keepPrivateEvenWhenAdmin is false, the object gets READ
+     * permissions for ANONYMOUS.
+     * <li>If the current user is a "regular user" (non-admin) give them read/write permissions.
+     */
+    private void setupBaseAces( MutableAcl acl, ObjectIdentity oi, Sid sid, boolean keepPrivateEvenWhenAdmin ) {
+        // All objects must have administration permissions on them.
+        if ( log.isDebugEnabled() ) log.debug( "Making administratable by GROUP_ADMIN: " + oi );
+        grant( acl, BasePermission.ADMINISTRATION, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
+            AuthorityConstants.ADMIN_GROUP_AUTHORITY ) ) );
+
+        // Let agent read anything
+        if ( log.isDebugEnabled() ) log.debug( "Making readable by GROUP_AGENT: " + oi );
+        grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
+            AuthorityConstants.AGENT_GROUP_AUTHORITY ) ) );
+
+        // If admin, and the object is not a user or group, make it readable by anonymous.
+        boolean makeAnonymousReadable = SecurityUtil.isUserAdmin() && !keepPrivateEvenWhenAdmin;
+
+        if ( makeAnonymousReadable ) {
+            if ( log.isDebugEnabled() ) log.debug( "Making readable by IS_AUTHENTICATED_ANONYMOUSLY: " + oi );
+            grant( acl, BasePermission.READ, new AclGrantedAuthoritySid( new SimpleGrantedAuthority(
+                AuthenticatedVoter.IS_AUTHENTICATED_ANONYMOUSLY ) ) );
+        }
+
+        // Don't add more permissions for the administrator. But whatever it is, the person who created it can
+        // read/write it. User will only be anonymous if they are registering (AFAIK)
+        if ( !SecurityUtil.isUserAdmin() && !SecurityUtil.isUserAnonymous() ) {
+
+            if ( log.isDebugEnabled() ) log.debug( "Giving read/write permissions on " + oi + " to " + sid );
+            grant( acl, BasePermission.READ, sid );
+
+            /*
+             * User who created something can edit it.
+             */
+            grant( acl, BasePermission.WRITE, sid );
+
+        }
     }
 
     /**
@@ -484,67 +517,27 @@ public abstract class BaseAclAdvice {
      * If the object is a SecuredNotChild, then it will be treated as the parent. For example, ArrayDesigns associated
      * with an Experiment has 'parent status' for securables associated with the AD, such as LocalFiles.
      */
+    @Nullable
     private Acl chooseParentForAssociations( Object object, @Nullable Acl previousParent ) {
-        Acl parentAcl;
-        if ( SecuredNotChild.class.isAssignableFrom( object.getClass() )
-            || ( previousParent == null && Securable.class.isAssignableFrom( object.getClass() ) && !SecuredChild.class
-            .isAssignableFrom( object.getClass() ) ) ) {
-
-            parentAcl = getAcl( ( Securable ) object );
+        if ( object instanceof SecuredNotChild
+            || ( previousParent == null && object instanceof Securable && !( object instanceof SecuredChild ) ) ) {
+            return getAcl( ( Securable ) object );
         } else {
-            /*
-             * Keep the previous parent. This means we 'pass through' and the parent is basically going to be the
-             * top-most object: there isn't a hierarchy of parenthood. This also means that the parent might be kept as
-             * null.
-             */
-            parentAcl = previousParent;
-
+            // Keep the previous parent. This means we 'pass through' and the parent is basically going to be the
+            // top-most object: there isn't a hierarchy of parenthood. This also means that the parent might be kept as
+            // null.
+            return previousParent;
         }
-        return parentAcl;
     }
 
-    /**
-     * Delete acl permissions for an object.
-     */
-    private void deleteAcl( Securable object ) throws DataAccessException, IllegalArgumentException {
-        ObjectIdentity oi = makeObjectIdentity( object );
-
-        if ( oi == null ) {
-            log.warn( "Null object identity for : " + object );
-        }
-
-        if ( log.isDebugEnabled() ) {
-            log.debug( "Deleting ACL for " + object );
-        }
-
-        /*
-         * This deletes children with the second parameter = true.
-         */
-        this.getAclService().deleteAcl( oi, true );
-    }
-
+    @Nullable
     private MutableAcl getAcl( Securable s ) {
         ObjectIdentity oi = objectIdentityRetrievalStrategy.getObjectIdentity( s );
-
         try {
-            return ( MutableAcl ) getAclService().readAclById( oi );
+            return ( MutableAcl ) aclService.readAclById( oi );
         } catch ( NotFoundException e ) {
             return null;
         }
-    }
-
-    private Object getPersistentObject( Object retValue, String methodName, Object[] args ) {
-        if ( methodIsDelete( methodName ) || methodIsUpdate( methodName ) ) {
-
-            /*
-             * Only deal with single-argument update methods. MIGHT WANT TO RETURN THE FIRST ARGUMENT
-             */
-            if ( args.length > 1 ) return null;
-
-            assert args.length > 0;
-            return args[0];
-        }
-        return retValue;
     }
 
     /**
@@ -556,27 +549,6 @@ public abstract class BaseAclAdvice {
      */
     private void grant( MutableAcl acl, Permission permission, Sid sid ) {
         acl.insertAce( acl.getEntries().size(), permission, sid, true );
-    }
-
-    private boolean isIneligibleForAcl( Object c ) {
-        return !( c instanceof Securable );
-    }
-
-    /**
-     * Recursively locate the actual secured parent.
-     */
-    private Securable locateSecuredParent( SecuredChild s ) {
-        if ( s.getSecurityOwner() == null ) {
-            return null;
-
-        }
-        Securable securityOwner = s.getSecurityOwner();
-
-        if ( securityOwner instanceof SecuredChild ) {
-            return locateSecuredParent( ( SecuredChild ) securityOwner );
-        }
-        return securityOwner;
-
     }
 
     /**
@@ -597,13 +569,13 @@ public abstract class BaseAclAdvice {
         int aceCount = childAcl.getEntries().size();
 
         if ( aceCount == 0 ) {
-            if ( parentAcl.getEntries().size() == 0 ) {
+            if ( parentAcl.getEntries().isEmpty() ) {
                 throw new IllegalStateException( "Either the child or the parent has to have ACEs" );
             }
             return false;
         }
 
-        boolean force = specialCaseToAllowRemovingAcesFromChild( object, parentAcl );
+        boolean force = canRemoveAcesFromChild( object, parentAcl );
 
         if ( parentAcl.getEntries().size() == aceCount || force ) {
 
@@ -635,7 +607,7 @@ public abstract class BaseAclAdvice {
 
                 if ( log.isTraceEnabled() ) log.trace( "Erasing ACEs from child " + object );
 
-                while ( childAcl.getEntries().size() > 0 ) {
+                while ( !childAcl.getEntries().isEmpty() ) {
                     childAcl.deleteAce( 0 );
                 }
 
@@ -670,7 +642,7 @@ public abstract class BaseAclAdvice {
      * @param parentAcl - the potential parent
      */
     private void maybeSetParentACL( final Securable object, MutableAcl childAcl, @Nullable final Acl parentAcl ) {
-        if ( parentAcl != null && !SecuredNotChild.class.isAssignableFrom( object.getClass() ) ) {
+        if ( parentAcl != null && !( object instanceof SecuredNotChild ) ) {
 
             Acl currentParentAcl = childAcl.getParentAcl();
 
@@ -691,44 +663,18 @@ public abstract class BaseAclAdvice {
             boolean clearedACEs = maybeClearACEsOnChild( object, childAcl, parentAcl );
 
             if ( changedParentAcl || clearedACEs ) {
-                getAclService().updateAcl( childAcl );
+                aclService.updateAcl( childAcl );
             }
         }
         childAcl.getParentAcl();
     }
 
     /**
-     * Do necessary ACL operations on the object.
-     */
-    private void process( final Object o, final String methodName, final boolean isUpdate, final boolean isDelete ) {
-
-        Securable s = ( Securable ) o;
-
-        assert s != null;
-
-        if ( isUpdate ) {
-            if ( log.isTraceEnabled() ) log.trace( "***********  Start update ACL on " + o + " *************" );
-            startUpdate( methodName, s );
-        } else if ( isDelete ) {
-            if ( log.isTraceEnabled() ) log.trace( "***********  Start delete ACL on " + o + " *************" );
-            deleteAcl( s );
-        } else {
-            if ( log.isTraceEnabled() ) log.trace( "***********  Start create ACL on " + o + " *************" );
-            startCreate( methodName, s );
-        }
-
-        if ( log.isTraceEnabled() ) log.trace( "*========* End ACL on " + o + " *=========*" );
-    }
-
-    /**
      * Walk the tree of associations and add (or update) acls.
      *
-     * @param methodName     method name
      * @param previousParent The parent ACL of the given object (if it is a Securable) or of the last visited Securable.
      */
-    @SuppressWarnings("unchecked")
-    private void processAssociations( String methodName, Object object, @Nullable Acl previousParent ) {
-
+    private void processAssociations( Object object, @Nullable Acl previousParent ) {
         if ( canSkipAclCheck( object ) ) {
             return;
         }
@@ -755,8 +701,8 @@ public abstract class BaseAclAdvice {
              * be a bit tricky because there are exceptions. This is kind of inelegant, but the alternative is to check
              * _every_ association, which will often not be reachable.
              */
-            if ( !specialCaseForAssociationFollow( object, propertyName )
-                && ( canSkipAssociationCheck( object, propertyName ) || !needCascade( methodName, cs ) ) ) {
+            if ( !canFollowAssociation( object, propertyName )
+                && ( canSkipAssociationCheck( object, propertyName ) || !( cs.doCascade( CascadingAction.PERSIST ) || cs.doCascade( CascadingAction.SAVE_UPDATE ) || cs.doCascade( CascadingAction.MERGE ) ) ) ) {
                 // if ( log.isTraceEnabled() )
                 // log.trace( "Skipping checking association: " + propertyName + " on " + object );
                 continue;
@@ -767,7 +713,8 @@ public abstract class BaseAclAdvice {
             Object associatedObject;
             try {
                 // FieldUtils DOES NOT WORK correctly with proxies
-                associatedObject = getProperty( object, descriptor );
+                Method getter = descriptor.getReadMethod();
+                associatedObject = getter.invoke( object );
             } catch ( LazyInitializationException e ) {
                 /*
                  * This is not a problem. If this was reached via a create, the associated objects must not be new so
@@ -788,17 +735,17 @@ public abstract class BaseAclAdvice {
             if ( associatedObject == null ) continue;
 
             if ( associatedObject instanceof Collection ) {
-                Collection<Object> associatedObjects = ( Collection<Object> ) associatedObject;
+                Collection<?> associatedObjects = ( Collection<?> ) associatedObject;
 
                 try {
                     for ( Object object2 : associatedObjects ) {
 
-                        if ( Securable.class.isAssignableFrom( object2.getClass() ) ) {
+                        if ( object2 instanceof Securable ) {
                             addOrUpdateAcl( null, ( Securable ) object2, parentAcl );
                         } else if ( log.isTraceEnabled() ) {
                             log.trace( object2 + ": not securable, skipping" );
                         }
-                        processAssociations( methodName, object2, parentAcl );
+                        processAssociations( object2, parentAcl );
                     }
                 } catch ( LazyInitializationException ok ) {
                     /*
@@ -819,81 +766,44 @@ public abstract class BaseAclAdvice {
                 if ( Securable.class.isAssignableFrom( propertyType ) ) {
                     addOrUpdateAcl( null, ( Securable ) associatedObject, parentAcl );
                 }
-                processAssociations( methodName, associatedObject, parentAcl );
+                processAssociations( associatedObject, parentAcl );
             }
         }
     }
 
-    private void startCreate( String methodName, Securable s ) {
-
-        /*
-         * Note that if the method is findOrCreate, we'll return quickly.
-         */
-
-        ObjectIdentity oi = makeObjectIdentity( s );
-
-        if ( oi == null ) {
-            throw new IllegalStateException(
-                "On 'create' methods, object should have a valid objectIdentity available. Method=" + methodName
-                    + " on " + s );
-        }
-
-        Acl parentAcl = SecuredChild.class.isAssignableFrom( s.getClass() ) ? locateParentAcl( ( SecuredChild ) s )
-            : null;
-
-        addOrUpdateAcl( null, s, parentAcl );
-        processAssociations( methodName, s, null );
-
-    }
-
     /**
-     * Kick off an update. This is executed when we call fooService.update(s). The basic issue is to add permissions for
-     * any <em>new</em> associated objects.
-     *
-     * @param m the update method
-     * @param s the securable being updated.
+     * Efficiently extract all securable of a given type in an object's tree.
+     * <p>
+     * This method traverses {@link Map}, {@link Collection}, {@link Iterable} and Java arrays, but not properties and
+     * fields of objects.
+     * <p>
+     * This was borrowed from Gemma's AuditAdvice.
      */
-    private void startUpdate( String m, Securable s ) {
-
-        ObjectIdentity oi = makeObjectIdentity( s );
-
-        // this is not persistent.
-        assert oi != null;
-        MutableAcl acl = null;
-        Acl parentAcl = null;
-        try {
-            acl = ( MutableAcl ) getAclService().readAclById( oi );
-            assert acl != null;
-            parentAcl = acl.getParentAcl(); // can be null.
-        } catch ( NotFoundException nfe ) {
-            /*
-             * This really should be an error.
-             */
-
-            /*
-             * Then, this shouldn't be an update.
-             */
-            log.warn( "On 'update' methods, there should be a ACL on the passed object already. Method=" + m + " on "
-                + s );
+    public static Collection<Securable> extractSecurables( Object object ) {
+        // necessary as ArrayQueue does not accept nulls
+        Queue<Object> fringe = new LinkedList<>();
+        // use identity hashcode since auditable might rely on a potentially null ID for hashing
+        Set<Object> visited = Collections.newSetFromMap( new IdentityHashMap<>() );
+        Collection<Securable> found = new ArrayList<>();
+        fringe.add( object );
+        while ( !fringe.isEmpty() ) {
+            Object o = fringe.remove();
+            if ( o == null )
+                continue;
+            if ( visited.contains( o ) )
+                continue;
+            visited.add( o );
+            if ( o instanceof Securable ) {
+                found.add( ( Securable ) o );
+            } else if ( o.getClass().isArray() ) {
+                CollectionUtils.addAll( fringe, ( Object[] ) o );
+            } else if ( o instanceof Iterable ) {
+                CollectionUtils.addAll( fringe, ( Iterable<?> ) o );
+            } else if ( o instanceof Map ) {
+                CollectionUtils.addAll( fringe, ( ( Map<?, ?> ) o ).keySet() );
+                CollectionUtils.addAll( fringe, ( ( Map<?, ?> ) o ).values() );
+            }
         }
-
-        addOrUpdateAcl( acl, s, parentAcl );
-        processAssociations( m, s, parentAcl );
-    }
-
-
-    private boolean methodIsDelete( String s ) {
-        return s.equals( "remove" ) || s.equals( "delete" );
-    }
-
-    private boolean methodIsUpdate( String s ) {
-        return s.equals( "update" ) || s.equals( "persistOrUpdate" );
-    }
-
-    private boolean needCascade( String m, CascadeStyle cs ) {
-        if ( methodIsDelete( m ) ) {
-            return cs.doCascade( CascadingAction.DELETE );
-        }
-        return cs.doCascade( CascadingAction.PERSIST ) || cs.doCascade( CascadingAction.SAVE_UPDATE );
+        return found;
     }
 }
